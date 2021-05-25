@@ -7,5 +7,5 @@
   "RepoUrl": "https://github.com/WesselKuipers/FCNameColor",
   "ApplicableVersion": "any",
   "Tags": [ "nameplate", "FC", "name", "colors" ],
-  "DalamudApiLevel": 2
+  "DalamudApiLevel": 3
 }
