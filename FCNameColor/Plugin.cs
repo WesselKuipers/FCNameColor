@@ -60,7 +60,7 @@ namespace FCNameColor
 
             pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = "Color your FC’s tag or the entire nameplate if they are in your FC. Use /fcnc to open up the config."
+                HelpMessage = "Opens the FCNameColor configuration."
             });
 
             pi.ClientState.OnLogin += OnLogin;
