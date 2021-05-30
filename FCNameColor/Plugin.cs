@@ -44,7 +44,7 @@ namespace FCNameColor
             cache = new Dictionary<int, PlayerPointer>();
             client = new HttpClient();
             characterId = -1;
-            
+
             configuration = pi.GetPluginConfig() as Configuration ?? new Configuration();
             configuration.Initialize(pi);
             lastColor = configuration.UiColor;
@@ -66,10 +66,11 @@ namespace FCNameColor
             pi.ClientState.OnLogin += OnLogin;
             pi.Framework.OnUpdateEvent += OnFrameworkUpdate;
             pi.UiBuilder.OnBuildUi += DrawUI;
-            
+            pi.UiBuilder.OnOpenConfigUi += DrawConfigUI;
+
             if (pi.ClientState.IsLoggedIn && pi.ClientState.LocalPlayer.CompanyTag != null)
             {
-                FetchData();
+                _ = FetchData();
             }
         }
 
@@ -77,7 +78,7 @@ namespace FCNameColor
         {
             ui.Dispose();
             client.Dispose();
-            
+
             pi.CommandManager.RemoveHandler(commandName);
             pi.Framework.OnUpdateEvent -= OnFrameworkUpdate;
             pi.ClientState.OnLogin -= OnLogin;
@@ -96,7 +97,12 @@ namespace FCNameColor
 
         private void OnCommand(string command, string args)
         {
-            // in response to the slash command, just display our main ui
+            // In response to the slash command, just display our main ui
+            ui.Visible = true;
+        }
+
+        private void DrawConfigUI(object sender, EventArgs e)
+        {
             ui.Visible = true;
         }
 

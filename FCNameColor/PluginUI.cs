@@ -24,13 +24,6 @@ namespace FCNameColor
             set { visible = value; }
         }
 
-        private bool settingsVisible = false;
-        public bool SettingsVisible
-        {
-            get { return settingsVisible; }
-            set { settingsVisible = value; }
-        }
-
         public PluginUI(Configuration config, DalamudPluginInterface pi)
         {
             configuration = config;

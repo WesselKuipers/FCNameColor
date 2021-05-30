@@ -1,5 +1,4 @@
 ﻿using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Game.ClientState.Actors;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Client.System.String;
