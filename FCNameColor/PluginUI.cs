@@ -4,9 +4,22 @@ using System.Numerics;
 using Dalamud.Plugin;
 using Lumina.Excel.GeneratedSheets;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace FCNameColor
 {
+    class UIColorComparer : IEqualityComparer<UIColor>
+    {
+        public bool Equals(UIColor x, UIColor y)
+        {
+            return x.UIForeground == y.UIForeground; // based on variable i
+        }
+        public int GetHashCode(UIColor obj)
+        {
+            return obj.UIForeground.GetHashCode(); // hashcode of variable to compare
+        }
+    }
+
     // It is good to have this be disposable in general, in case you ever need it
     // to do any cleanup
     class PluginUI : IDisposable
@@ -25,7 +38,7 @@ namespace FCNameColor
         public PluginUI(Configuration config, DalamudPluginInterface pi)
         {
             configuration = config;
-            var list = new List<UIColor>(pi.Data.Excel.GetSheet<UIColor>());
+            var list = new List<UIColor>(pi.Data.Excel.GetSheet<UIColor>().Distinct(new UIColorComparer()));
             list.Sort((a, b) => {
                 var colorA = ConvertUIColorToColor(a);
                 var colorB = ConvertUIColorToColor(b);
@@ -60,8 +73,8 @@ namespace FCNameColor
                 return;
             }
 
-            ImGui.SetNextWindowSize(new Vector2(375, 470), ImGuiCond.FirstUseEver);
-            ImGui.SetNextWindowSizeConstraints(new Vector2(375, 470), new Vector2(375, float.MaxValue));
+            ImGui.SetNextWindowSize(new Vector2(375, 440), ImGuiCond.Always);
+            ImGui.SetNextWindowSizeConstraints(new Vector2(375, 440), new Vector2(375, float.MaxValue));
             if (ImGui.Begin("FC Name Color Config", ref visible, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize))
             {
                 var enabled = configuration.Enabled;
@@ -71,7 +84,7 @@ namespace FCNameColor
                     configuration.Save();
                 }
                 ImGui.SameLine();
-                ImGui.Text(" * Changes may apply immediately.");
+                ImGui.Text(" * Changes may not apply immediately.");
 
                 // can't ref a property, so use a local copy
                 var onlyColorFCTag = configuration.OnlyColorFCTag;
@@ -85,6 +98,13 @@ namespace FCNameColor
                 if (ImGui.Checkbox("Include self (Only affects FC tag)", ref includeSelf))
                 {
                     configuration.IncludeSelf = includeSelf;
+                    configuration.Save();
+                }
+
+                var includeDuties = configuration.IncludeDuties;
+                if (ImGui.Checkbox("Include duties (Will color the entire name)", ref includeDuties))
+                {
+                    configuration.IncludeDuties = includeDuties;
                     configuration.Save();
                 }
 

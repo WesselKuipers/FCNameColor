@@ -15,8 +15,9 @@ namespace FCNameColor
         public bool Enabled { get; set; } = true;
         public bool OnlyColorFCTag { get; set; } = false;
         public bool IncludeSelf { get; set; } = false;
-        public Vector4 Color { get; set; } = new Vector4(204, 55, 55, 255); // The same as UiColor 704.
-        public string UiColor { get; set; } = "704"; // A red-ish colour.
+        public bool IncludeDuties { get; set; } = true;
+        public Vector4 Color { get; set; } = new Vector4(204, 55, 55, 255); // The same as UiColor 14.
+        public string UiColor { get; set; } = "14"; // A red-ish colour.
         public List<XivApiSearchResponseCharacter> FcMembers { get; set; } = null;
 
 
