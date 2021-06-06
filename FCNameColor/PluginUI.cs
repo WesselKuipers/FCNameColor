@@ -3,8 +3,6 @@ using System;
 using System.Numerics;
 using Dalamud.Plugin;
 using Lumina.Excel.GeneratedSheets;
-using Lumina.Excel;
-using Dalamud.Interface.Components;
 using System.Collections.Generic;
 
 namespace FCNameColor

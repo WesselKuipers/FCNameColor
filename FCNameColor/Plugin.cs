@@ -211,8 +211,8 @@ namespace FCNameColor
                 return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
             }
 
-            PlayerCharacter target = (PlayerCharacter)Enumerable.First(pi.ClientState.Actors, actor => actor.ActorId == actorID);
-            if ((target).HomeWorld.Id != pi.ClientState.LocalPlayer.HomeWorld.Id)
+            PlayerCharacter target = (PlayerCharacter)Enumerable.FirstOrDefault(pi.ClientState.Actors, actor => actor.ActorId == actorID);
+            if (target == default(PlayerCharacter) || target.HomeWorld.Id != pi.ClientState.LocalPlayer.HomeWorld.Id)
             {
                 return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
             }
