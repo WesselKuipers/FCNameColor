@@ -286,7 +286,7 @@ namespace FCNameColor
             var entry = cache[actorID];
             var newName = entry.NamePtr != IntPtr.Zero ? entry.NamePtr : name;
             var newTitle = entry.TitlePtr != IntPtr.Zero ? entry.TitlePtr : title;
-            var newFCName = entry.FcPtr != IntPtr.Zero ? entry.FcPtr : fcName;
+            var newFCName = entry.FcPtr != IntPtr.Zero && !isInDuty ? entry.FcPtr : fcName;
 
             lastColor = configuration.UiColor;
             return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, newTitle, newName, newFCName, iconID);
