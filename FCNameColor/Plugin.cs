@@ -28,6 +28,7 @@ namespace FCNameColor
         private Dictionary<int, PlayerPointer> cache;
         private HttpClient client;
         private string lastColor;
+        private bool lastOnlyColorFCTag;
         private int characterId;
         private Hook<SetNamePlateDelegate> SetNamePlateHook;
         private bool loggingIn;
@@ -223,9 +224,9 @@ namespace FCNameColor
                 return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
             }
 
-            if (!lastColor.Equals(configuration.UiColor))
+            if (!lastColor.Equals(configuration.UiColor) || lastOnlyColorFCTag != configuration.OnlyColorFCTag)
             {
-                PluginLog.Debug($"Color was set to UIColour {configuration.UiColor}. Clearing cache.");
+                PluginLog.Debug($"Settings changed. Clearing cache.");
                 foreach (var cacheItem in cache)
                 {
                     cacheItem.Value.Dispose();
@@ -233,10 +234,12 @@ namespace FCNameColor
                 cache.Clear();
             }
 
+            var tag = npInfo.FcName.Replace(" Â«", "").Replace("Â»", "");
+
             if (cache.ContainsKey(actorID))
             {
                 var cacheItem = cache[actorID];
-                if (cacheItem.FC != target.CompanyTag || (!isLocalPlayer && !isPartyMember && cacheItem.Title != npInfo.Title))
+                if (cacheItem.FC != tag || (!isLocalPlayer && !isPartyMember && cacheItem.Title != npInfo.Title))
                 {
                     cacheItem.Dispose();
                     cache.Remove(actorID);
@@ -246,18 +249,22 @@ namespace FCNameColor
             if (!cache.ContainsKey(actorID))
             {
                 var playerPointer = new PlayerPointer();
+                playerPointer.Name = npInfo.Name;
+                playerPointer.Title = npInfo.Title; 
+
                 if (!isInDuty)
                 {
                     var newFCString = new SeString(new List<Payload>())
                         .Append(new UIForegroundPayload(pi.Data, Convert.ToUInt16(configuration.UiColor)))
-                        .Append(new TextPayload($" «{target.CompanyTag}»"))
+                        .Append(new TextPayload($" «{tag}»"))
                         .Append(UIForegroundPayload.UIForegroundOff);
                     var newFcNamePtr = SeStringToSeStringPtr(newFCString);
                     playerPointer.FcPtr = newFcNamePtr;
-                    playerPointer.FC = target.CompanyTag;
+                    playerPointer.FC = tag;
                 }
 
                 var shouldReplaceName = isInDuty ? (configuration.IncludeDuties && !isLocalPlayer) : (!configuration.OnlyColorFCTag && !isPartyMember && !isLocalPlayer);
+                PluginLog.Debug($"shouldReplaceName: {shouldReplaceName}, OnlyColorFCTag: {configuration.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
                 if (shouldReplaceName)
                 {
                     var newNameString = new SeString(new List<Payload>())
@@ -266,7 +273,6 @@ namespace FCNameColor
                         .Append(UIForegroundPayload.UIForegroundOff);
                     var newNamePtr = SeStringToSeStringPtr(newNameString);
                     playerPointer.NamePtr = newNamePtr;
-                    playerPointer.Name = npInfo.Name;
 
                     if (displayTitle && !string.IsNullOrEmpty(npInfo.Title))
                     {
@@ -276,12 +282,13 @@ namespace FCNameColor
                           .Append(UIForegroundPayload.UIForegroundOff);
                         var newTitlePtr = SeStringToSeStringPtr(newTitleString);
                         playerPointer.TitlePtr = newTitlePtr;
-                        playerPointer.Title = npInfo.Title;
                     }
                 }
                 cache.Add(actorID, playerPointer);
                 PluginLog.Debug($"Overriding player nameplate for {npInfo.Name} (ActorID {actorID})");
             }
+
+            var isDead = target.CurrentHp == 0;
 
             var entry = cache[actorID];
             var newName = entry.NamePtr != IntPtr.Zero ? entry.NamePtr : name;
@@ -289,6 +296,7 @@ namespace FCNameColor
             var newFCName = entry.FcPtr != IntPtr.Zero && !isInDuty ? entry.FcPtr : fcName;
 
             lastColor = configuration.UiColor;
+            lastOnlyColorFCTag = configuration.OnlyColorFCTag;
             return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, newTitle, newName, newFCName, iconID);
         }
     }
