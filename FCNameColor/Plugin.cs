@@ -250,7 +250,7 @@ namespace FCNameColor
             {
                 var playerPointer = new PlayerPointer();
                 playerPointer.Name = npInfo.Name;
-                playerPointer.Title = npInfo.Title; 
+                playerPointer.Title = npInfo.Title;
 
                 if (!isInDuty)
                 {

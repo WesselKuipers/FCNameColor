@@ -4,3 +4,5 @@ bin/
 *.user
 lib/FFXIVClientStructs
 UIDev/
+packages/
+Data/
