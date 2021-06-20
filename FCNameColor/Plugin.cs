@@ -144,7 +144,13 @@ namespace FCNameColor
                 var playerSearchResponse = JsonConvert.DeserializeObject<XivApiCharacterSearchResponse>(playerSearchContent);
                 if (playerSearchResponse.Results.Count == 0) { return; }
 
-                characterId = playerSearchResponse.Results[0].ID;
+                characterId = playerSearchResponse.Results.FirstOrDefault(player => player.Name == pi.ClientState.LocalPlayer.Name).ID;
+
+                if (characterId == default)
+                {
+                    PluginLog.Error("Could not find your character.");
+                    return;
+                }
             }
 
             var memberSearchRequest = await client.GetAsync($"https://xivapi.com/character/{characterId}?data=FCM");
@@ -234,7 +240,7 @@ namespace FCNameColor
                 cache.Clear();
             }
 
-            var tag = npInfo.FcName.Replace(" Â«", "").Replace("Â»", "");
+            var tag = pi.SeStringManager.Parse(XivApi.ReadSeStringBytes(npInfo.FcNameAddress)).TextValue;
 
             if (cache.ContainsKey(actorID))
             {
@@ -248,15 +254,19 @@ namespace FCNameColor
 
             if (!cache.ContainsKey(actorID))
             {
-                var playerPointer = new PlayerPointer();
-                playerPointer.Name = npInfo.Name;
-                playerPointer.Title = npInfo.Title;
+                var playerPointer = new PlayerPointer
+                {
+                    Name = npInfo.Name,
+                    Title = npInfo.Title
+                };
 
                 if (!isInDuty)
                 {
+
+
                     var newFCString = new SeString(new List<Payload>())
                         .Append(new UIForegroundPayload(pi.Data, Convert.ToUInt16(configuration.UiColor)))
-                        .Append(new TextPayload($" «{tag}»"))
+                        .Append(new TextPayload(tag))
                         .Append(UIForegroundPayload.UIForegroundOff);
                     var newFcNamePtr = SeStringToSeStringPtr(newFCString);
                     playerPointer.FcPtr = newFcNamePtr;

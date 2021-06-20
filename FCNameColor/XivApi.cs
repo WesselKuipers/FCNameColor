@@ -104,6 +104,20 @@ namespace FCNameColor
             return pointer;
         }
 
+        public static byte[] ReadSeStringBytes(IntPtr stringPtr)
+        {
+            if (stringPtr == IntPtr.Zero)
+                return null;
+
+            var size = 0;
+            while (Marshal.ReadByte(stringPtr, size) != 0)
+                size++;
+
+            var bytes = new byte[size];
+            Marshal.Copy(stringPtr, bytes, 0, size);
+            return bytes;
+        }
+
         #endregion
 
         internal static SafeAddonNamePlate GetSafeAddonNamePlate() => new SafeAddonNamePlate(Instance.Interface);
