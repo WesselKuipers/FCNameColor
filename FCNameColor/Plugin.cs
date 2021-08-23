@@ -280,7 +280,7 @@ namespace FCNameColor
                 {
                     var newNameString = new SeString(new List<Payload>())
                         .Append(new UIForegroundPayload(pi.Data, Convert.ToUInt16(configuration.UiColor)))
-                        .Append(new TextPayload(npInfo.Name))
+                        .Append(new TextPayload(pi.SeStringManager.Parse(XivApi.ReadSeStringBytes(npInfo.NameAddress)).TextValue))
                         .Append(UIForegroundPayload.UIForegroundOff);
                     var newNamePtr = SeStringToSeStringPtr(newNameString);
                     playerPointer.NamePtr = newNamePtr;
@@ -289,7 +289,7 @@ namespace FCNameColor
                     {
                         var newTitleString = new SeString(new List<Payload>())
                           .Append(new UIForegroundPayload(pi.Data, Convert.ToUInt16(configuration.UiColor)))
-                          .Append(new TextPayload($"《{npInfo.Title}》"))
+                          .Append(new TextPayload($"《{pi.SeStringManager.Parse(XivApi.ReadSeStringBytes(npInfo.TitleAddress)).TextValue}》"))
                           .Append(UIForegroundPayload.UIForegroundOff);
                         var newTitlePtr = SeStringToSeStringPtr(newTitleString);
                         playerPointer.TitlePtr = newTitlePtr;
