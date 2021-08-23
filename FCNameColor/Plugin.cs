@@ -182,32 +182,33 @@ namespace FCNameColor
 
         internal IntPtr SetNamePlate(IntPtr namePlateObjectPtr, bool isPrefixTitle, bool displayTitle, IntPtr title, IntPtr name, IntPtr fcName, int iconID)
         {
+            Func<IntPtr> original = () => SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
             if (!configuration.Enabled || configuration.FcMembers == null)
             {
-                return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
+                return original();
             }
 
             var npObject = new XivApi.SafeNamePlateObject(namePlateObjectPtr);
             if (npObject == null)
             {
-                return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
+                return original();
             }
 
             var npInfo = npObject.NamePlateInfo;
             if (npInfo == null)
             {
-                return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
+                return original();
             }
 
             var actorID = npInfo.Data.ActorID;
             if (actorID == -1)
             {
-                return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
+                return original();
             }
 
             if (!npInfo.IsPlayerCharacter())  // Only PlayerCharacters should have their colors changed.
             {
-                return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
+                return original();
             }
 
             var isLocalPlayer = npObject.IsLocalPlayer;
@@ -216,18 +217,18 @@ namespace FCNameColor
 
             if (isLocalPlayer && !configuration.IncludeSelf)
             {
-                return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
+                return original();
             }
 
             PlayerCharacter target = (PlayerCharacter)Enumerable.FirstOrDefault(pi.ClientState.Actors, actor => actor.ActorId == actorID);
             if (target == default(PlayerCharacter) || target.HomeWorld.Id != pi.ClientState.LocalPlayer.HomeWorld.Id)
             {
-                return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
+                return original();
             }
 
             if (!configuration.FcMembers.Exists(member => member.Name == target.Name))
             {
-                return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
+                return original();
             }
 
             if (!lastColor.Equals(configuration.UiColor) || lastOnlyColorFCTag != configuration.OnlyColorFCTag)
