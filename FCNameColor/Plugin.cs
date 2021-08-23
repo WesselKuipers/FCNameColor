@@ -54,7 +54,7 @@ namespace FCNameColor
             address.Setup(pi.TargetModuleScanner);
 
             XivApi.Initialize(pi, address);
-            SetNamePlateHook = new Hook<SetNamePlateDelegate>(address.AddonNamePlate_SetNamePlatePtr, new SetNamePlateDelegate(SetNamePlateDetour), this);
+            SetNamePlateHook = new Hook<SetNamePlateDelegate>(address.AddonNamePlate_SetNamePlatePtr, new SetNamePlateDelegate(SetNamePlateDetour));
             SetNamePlateHook.Enable();
 
             ui = new PluginUI(configuration, pi);
@@ -123,7 +123,7 @@ namespace FCNameColor
                 if (pi.ClientState.LocalPlayer.CompanyTag != null)
                 {
                     PluginLog.Debug($"Logged in as {pi.ClientState.LocalPlayer.Name} @ {pi.ClientState.LocalPlayer.HomeWorld.GameData.Name}.");
-                    FetchData().Wait();
+                    _ = FetchData();
                 }
             }
         }
