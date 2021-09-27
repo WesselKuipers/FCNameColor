@@ -1,10 +1,10 @@
 ﻿using ImGuiNET;
 using System;
 using System.Numerics;
-using Dalamud.Plugin;
 using Lumina.Excel.GeneratedSheets;
 using System.Collections.Generic;
 using System.Linq;
+using Dalamud.Data;
 
 namespace FCNameColor
 {
@@ -35,11 +35,12 @@ namespace FCNameColor
             set { visible = value; }
         }
 
-        public PluginUI(Configuration config, DalamudPluginInterface pi)
+        public PluginUI(Configuration config, DataManager data)
         {
             configuration = config;
-            var list = new List<UIColor>(pi.Data.Excel.GetSheet<UIColor>().Distinct(new UIColorComparer()));
-            list.Sort((a, b) => {
+            var list = new List<UIColor>(data.GetExcelSheet<UIColor>().Distinct(new UIColorComparer()));
+            list.Sort((a, b) =>
+            {
                 var colorA = ConvertUIColorToColor(a);
                 var colorB = ConvertUIColorToColor(b);
                 ImGui.ColorConvertRGBtoHSV(colorA.X, colorA.Y, colorA.Z, out float aH, out float aS, out float aV);
@@ -59,7 +60,7 @@ namespace FCNameColor
             uiColors = list;
         }
 
-        public void Dispose() {}
+        public void Dispose() { }
 
         public void Draw()
         {
@@ -73,9 +74,9 @@ namespace FCNameColor
                 return;
             }
 
-            ImGui.SetNextWindowSize(new Vector2(375, 440), ImGuiCond.Always);
-            ImGui.SetNextWindowSizeConstraints(new Vector2(375, 440), new Vector2(375, float.MaxValue));
-            if (ImGui.Begin("FC Name Color Config", ref visible, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoResize))
+            ImGui.SetNextWindowSize(new Vector2(375, 440), ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSizeConstraints(new Vector2(375, 470), new Vector2(375, float.MaxValue));
+            if (ImGui.Begin("FC Name Color Config", ref visible, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
                 var enabled = configuration.Enabled;
                 if (ImGui.Checkbox("Enabled", ref enabled))
@@ -83,8 +84,16 @@ namespace FCNameColor
                     configuration.Enabled = enabled;
                     configuration.Save();
                 }
-                ImGui.SameLine();
-                ImGui.Text(" * Changes may not apply immediately.");
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Changes may take a couple of seconds to apply.");
+                }
+
+                if (Plugin.Loading)
+                {
+                    ImGui.SameLine();
+                    ImGui.Text(" Fetching FC members from Lodestone...");
+                }
 
                 // can't ref a property, so use a local copy
                 var onlyColorFCTag = configuration.OnlyColorFCTag;
@@ -95,17 +104,36 @@ namespace FCNameColor
                 }
 
                 var includeSelf = configuration.IncludeSelf;
-                if (ImGui.Checkbox("Include self (Only affects FC tag)", ref includeSelf))
+                if (ImGui.Checkbox("Include self", ref includeSelf))
                 {
                     configuration.IncludeSelf = includeSelf;
                     configuration.Save();
                 }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("This will colour your own FC tag.");
+                }
 
                 var includeDuties = configuration.IncludeDuties;
-                if (ImGui.Checkbox("Include duties (Will color the entire name)", ref includeDuties))
+                if (ImGui.Checkbox("Include duties", ref includeDuties))
                 {
                     configuration.IncludeDuties = includeDuties;
                     configuration.Save();
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Will color the entire names of FC members when inside a duty.");
+                }
+
+                var glow = configuration.Glow;
+                if (ImGui.Checkbox("Enable glow", ref glow))
+                {
+                    configuration.Glow = glow;
+                    configuration.Save();
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Makes outline of the nameplates thicker.");
                 }
 
                 ImGui.ColorButton($"Nameplate color. Click on a color below to select a new one.", configuration.Color);
@@ -115,7 +143,8 @@ namespace FCNameColor
                 ImGui.Columns(12, "columns", false);
                 foreach (var z in uiColors)
                 {
-                    if (z.UIForeground == 0 || z.UIForeground == 255) { 
+                    if (z.UIForeground == 0 || z.UIForeground == 255)
+                    {
                         continue;
                     }
 
@@ -139,7 +168,7 @@ namespace FCNameColor
             return new Vector4((float)temp[3] / 255,
                 (float)temp[2] / 255,
                 (float)temp[1] / 255,
-                (float)temp[0] / 255); 
+                (float)temp[0] / 255);
         }
     }
 }

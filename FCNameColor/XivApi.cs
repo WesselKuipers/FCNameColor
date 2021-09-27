@@ -1,11 +1,13 @@
 ﻿using Dalamud.Game.Text.SeStringHandling;
-using Dalamud.Game.ClientState.Actors;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Dalamud.Logging;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
 
 namespace FCNameColor
 {
@@ -28,41 +30,37 @@ namespace FCNameColor
     {
         public static int ThreadID => System.Threading.Thread.CurrentThread.ManagedThreadId;
 
-        private readonly DalamudPluginInterface Interface;
         private readonly PluginAddressResolver Address;
 
         private readonly SetNamePlateDelegate SetNamePlate;
         private readonly Framework_GetUIModuleDelegate GetUIModule;
         private readonly GroupManager_IsObjectIDInPartyDelegate IsObjectIDInParty;
         private readonly GroupManager_IsObjectIDInAllianceDelegate IsObjectIDInAlliance;
-        private readonly BattleCharaStore_LookupBattleCharaByObjectIDDelegate LookupBattleCharaByObjectID;
 
         private static XivApi Instance;
 
-        public static void Initialize(DalamudPluginInterface pluginInterface, PluginAddressResolver address)
+        public static void Initialize(PluginAddressResolver address)
         {
-            Instance ??= new XivApi(pluginInterface, address);
+            Instance ??= new XivApi(address);
         }
 
-        private XivApi(DalamudPluginInterface pluginInterface, PluginAddressResolver address)
+        private XivApi(PluginAddressResolver address)
         {
-            Interface = pluginInterface;
             Address = address;
 
             SetNamePlate = Marshal.GetDelegateForFunctionPointer<SetNamePlateDelegate>(address.AddonNamePlate_SetNamePlatePtr);
             GetUIModule = Marshal.GetDelegateForFunctionPointer<Framework_GetUIModuleDelegate>(address.Framework_GetUIModulePtr);
             IsObjectIDInParty = Marshal.GetDelegateForFunctionPointer<GroupManager_IsObjectIDInPartyDelegate>(address.GroupManager_IsObjectIDInPartyPtr);
             IsObjectIDInAlliance = Marshal.GetDelegateForFunctionPointer<GroupManager_IsObjectIDInAllianceDelegate>(address.GroupManager_IsObjectIDInAlliancePtr);
-            LookupBattleCharaByObjectID = Marshal.GetDelegateForFunctionPointer<BattleCharaStore_LookupBattleCharaByObjectIDDelegate>(address.BattleCharaStore_LookupBattleCharaByObjectIDPtr);
 
-            Interface.ClientState.OnLogout += OnLogout_ResetRaptureAtkModule;
+            Plugin.ClientState.Logout += OnLogout_ResetRaptureAtkModule;
         }
 
         public static void DisposeInstance() => Instance.Dispose();
 
         public void Dispose()
         {
-            Interface.ClientState.OnLogout -= OnLogout_ResetRaptureAtkModule;
+            Plugin.ClientState.Logout -= OnLogout_ResetRaptureAtkModule;
         }
 
         #region RaptureAtkModule
@@ -75,7 +73,7 @@ namespace FCNameColor
             {
                 if (_RaptureAtkModulePtr == IntPtr.Zero)
                 {
-                    var frameworkPtr = Instance.Interface.Framework.Address.BaseAddress;
+                    var frameworkPtr = Plugin.Framework.Address.BaseAddress;
                     var uiModulePtr = Instance.GetUIModule(frameworkPtr);
 
                     unsafe
@@ -120,28 +118,24 @@ namespace FCNameColor
 
         #endregion
 
-        internal static SafeAddonNamePlate GetSafeAddonNamePlate() => new SafeAddonNamePlate(Instance.Interface);
+        internal static SafeAddonNamePlate GetSafeAddonNamePlate() => new SafeAddonNamePlate(Plugin.Pi);
 
-        internal static bool IsLocalPlayer(int actorID) => Instance.Interface.ClientState.LocalPlayer?.ActorId == actorID;
+        internal static bool IsPartyMember(int objectId) => Instance.IsObjectIDInParty(Instance.Address.GroupManagerPtr, objectId) == 1;
+        internal static bool IsAllianceMember(int objectId) => Instance.IsObjectIDInAlliance(Instance.Address.GroupManagerPtr, objectId) == 1;
 
-        internal static bool IsPartyMember(int actorID) => Instance.IsObjectIDInParty(Instance.Address.GroupManagerPtr, actorID) == 1;
-
-        internal static bool IsAllianceMember(int actorID) => Instance.IsObjectIDInParty(Instance.Address.GroupManagerPtr, actorID) == 1;
-
-        internal static bool IsPlayerCharacter(int actorID)
+        internal unsafe static bool IsPlayerCharacter(int objectId)
         {
-            var address = Instance.LookupBattleCharaByObjectID(Instance.Address.BattleCharaStorePtr, actorID);
-            if (address == IntPtr.Zero)
-                return false;
+            var address = CharacterManager.Instance()->LookupBattleCharaByObjectId(objectId);
+            if (address == null) { return false; }
 
-            return (ObjectKind)Marshal.ReadByte(address + Dalamud.Game.ClientState.Structs.ActorOffsets.ObjectKind) == ObjectKind.Player;
+            return ((GameObject*)address)->ObjectKind == (byte)ObjectKind.Pc;
         }
 
         internal class SafeAddonNamePlate
         {
             private readonly DalamudPluginInterface Interface;
 
-            public IntPtr Pointer => Interface.Framework.Gui.GetUiObjectByName("NamePlate", 1);
+            public IntPtr Pointer => Plugin.GUI.GetAddonByName("NamePlate", 1);
 
             public SafeAddonNamePlate(DalamudPluginInterface pluginInterface)
             {
@@ -274,11 +268,11 @@ namespace FCNameColor
 
             #endregion
 
-            public bool IsPlayerCharacter() => XivApi.IsPlayerCharacter(Data.ActorID);
+            public bool IsPlayerCharacter() => XivApi.IsPlayerCharacter((int) Data.ObjectID.ObjectID);
 
-            public bool IsPartyMember() => XivApi.IsPartyMember(Data.ActorID);
+            public bool IsPartyMember() => XivApi.IsPartyMember((int) Data.ObjectID.ObjectID);
 
-            public bool IsAllianceMember() => XivApi.IsAllianceMember(Data.ActorID);
+            public bool IsAllianceMember() => XivApi.IsAllianceMember((int) Data.ObjectID.ObjectID);
 
             private IntPtr GetStringPtr(string name)
             {

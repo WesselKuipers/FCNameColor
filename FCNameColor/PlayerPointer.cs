@@ -16,17 +16,17 @@ namespace FCNameColor
 
         public void Dispose()
         {
-            if (TitlePtr != null)
+            if (TitlePtr != IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(TitlePtr);
             }
 
-            if (FcPtr != null)
+            if (FcPtr != IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(FcPtr);
             }
 
-            if (NamePtr != null)
+            if (NamePtr != IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(NamePtr);
             }

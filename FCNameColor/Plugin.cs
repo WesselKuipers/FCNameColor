@@ -1,9 +1,17 @@
-﻿using Dalamud.Game.ClientState.Actors.Types;
+﻿using Dalamud.Data;
+using Dalamud.Game;
+using Dalamud.Game.ClientState;
+using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
-using Dalamud.Game.Internal;
+using Dalamud.Game.Gui;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
+using Dalamud.IoC;
+using Dalamud.Logging;
 using Dalamud.Plugin;
 using Newtonsoft.Json;
 using System;
@@ -11,7 +19,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using static FCNameColor.XivApi;
 
 namespace FCNameColor
 {
@@ -21,88 +28,92 @@ namespace FCNameColor
 
         private const string commandName = "/fcnc";
 
-        private DalamudPluginInterface pi;
-        private Configuration configuration;
-        private PluginUI ui;
+        [PluginService]
+        public static DalamudPluginInterface Pi { get; private set; }
+
+        private readonly Configuration config;
+
+        [PluginService]
+        public static ClientState ClientState { get; private set; }
+
+        [PluginService]
+        public static ChatGui Chat { get; private set; }
+
+        [PluginService]
+        public static GameGui GUI { get; private set; }
+
+        [PluginService]
+        public static Condition Condition { get; private set; }
+
+        [PluginService]
+        public static ObjectTable Objects { get; private set; }
+
+    [PluginService]
+        public static CommandManager Commands { get; private set; }
+
+        [PluginService]
+        public static Framework Framework { get; private set; }
+
+        [PluginService]
+        public static PartyList PartyList { get; private set; }
+
         private PluginAddressResolver address;
-        private Dictionary<int, PlayerPointer> cache;
+        private PluginUI ui { get; }
+        private Dictionary<uint, PlayerPointer> cache;
         private HttpClient client;
-        private string lastColor;
-        private bool lastOnlyColorFCTag;
+        private int lastSettings;
         private int characterId;
         private Hook<SetNamePlateDelegate> SetNamePlateHook;
         private bool loggingIn;
+        private bool firstTime = false;
+        public static bool Loading;
 
-        // When loaded by LivePluginLoader, the executing assembly will be wrong.
-        // Supplying this property allows LivePluginLoader to supply the correct location, so that
-        // you have full compatibility when loaded normally and through LPL.
-        public string AssemblyLocation { get => assemblyLocation; set => assemblyLocation = value; }
-        private string assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
-
-        public void Initialize(DalamudPluginInterface pluginInterface)
+        public Plugin(SigScanner scanner, GameGui gui, DataManager dataManager)
         {
-            pi = pluginInterface;
-            cache = new Dictionary<int, PlayerPointer>();
+            cache = new Dictionary<uint, PlayerPointer>();
             client = new HttpClient();
             characterId = -1;
 
-            configuration = pi.GetPluginConfig() as Configuration ?? new Configuration();
-            configuration.Initialize(pi);
-            lastColor = configuration.UiColor;
+            config = Pi.GetPluginConfig() as Configuration;
+            if (config == null)
+            {
+                firstTime = true;
+                config = new Configuration();
+            }
+            config.Initialize(Pi);
+            lastSettings = config.GetHashCode();
 
             address = new PluginAddressResolver();
-            address.Setup(pi.TargetModuleScanner);
+            address.Setup(scanner);
 
-            XivApi.Initialize(pi, address);
+            XivApi.Initialize(address);
             SetNamePlateHook = new Hook<SetNamePlateDelegate>(address.AddonNamePlate_SetNamePlatePtr, new SetNamePlateDelegate(SetNamePlateDetour));
             SetNamePlateHook.Enable();
 
-            ui = new PluginUI(configuration, pi);
+            ui = new PluginUI(config, dataManager);
 
-            pi.CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
+            Commands.AddHandler(commandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = "Opens the FCNameColor configuration."
+                HelpMessage = "Opens the FCNameColor Config."
             });
 
-            pi.ClientState.OnLogin += OnLogin;
-            pi.Framework.OnUpdateEvent += OnFrameworkUpdate;
-            pi.UiBuilder.OnBuildUi += DrawUI;
-            pi.UiBuilder.OnOpenConfigUi += DrawConfigUI;
+            ClientState.Login += OnLogin;
+            Framework.Update += OnFrameworkUpdate;
+            Pi.UiBuilder.Draw += DrawUI;
+            Pi.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            if (pi.ClientState.IsLoggedIn && pi.ClientState.LocalPlayer.CompanyTag != null)
+            if (ClientState.IsLoggedIn && ClientState.LocalPlayer.CompanyTag != null)
             {
                 _ = FetchData();
             }
         }
 
-        public void Dispose()
-        {
-            ui.Dispose();
-            client.Dispose();
-
-            pi.CommandManager.RemoveHandler(commandName);
-            pi.Framework.OnUpdateEvent -= OnFrameworkUpdate;
-            pi.ClientState.OnLogin -= OnLogin;
-            pi.Dispose();
-
-            SetNamePlateHook.Disable();
-            SetNamePlateHook.Dispose();
-
-            XivApi.DisposeInstance();
-            foreach (var ptr in cache)
-            {
-                ptr.Value.Dispose();
-            }
-            cache.Clear();
-        }
-
         private void OnCommand(string command, string args)
         {
-            // In response to the slash command, just display our main ui
             ui.Visible = true;
         }
 
-        private void DrawConfigUI(object sender, EventArgs e)
+        private void DrawConfigUI()
         {
             ui.Visible = true;
         }
@@ -116,13 +127,13 @@ namespace FCNameColor
 
         private void OnFrameworkUpdate(Framework framework)
         {
-            if (loggingIn && pi.ClientState.LocalPlayer != null)
+            if (loggingIn && ClientState.LocalPlayer != null)
             {
                 loggingIn = false;
 
-                if (pi.ClientState.LocalPlayer.CompanyTag != null)
+                if (ClientState.LocalPlayer.CompanyTag != null)
                 {
-                    PluginLog.Debug($"Logged in as {pi.ClientState.LocalPlayer.Name} @ {pi.ClientState.LocalPlayer.HomeWorld.GameData.Name}.");
+                    PluginLog.Debug($"Logged in as {ClientState.LocalPlayer.Name} @ {ClientState.LocalPlayer.HomeWorld.GameData.Name}.");
                     _ = FetchData();
                 }
             }
@@ -135,16 +146,23 @@ namespace FCNameColor
 
         private async Task FetchData()
         {
+            Loading = true;
+
+            if (firstTime)
+            {
+                Chat.Print("[FCNameColor]: First-time setup - Fetching FC members from Lodestone. Plugin will work once this is done.");
+            }
+
             if (characterId == -1)
             {
-                var playerSearchRequest = await client.GetAsync($"https://xivapi.com/character/search?name={pi.ClientState.LocalPlayer.Name}&server={pi.ClientState.LocalPlayer.HomeWorld.GameData.Name}");
+                var playerSearchRequest = await client.GetAsync($"https://xivapi.com/character/search?name={ClientState.LocalPlayer.Name}&server={ClientState.LocalPlayer.HomeWorld.GameData.Name}");
                 if (!playerSearchRequest.IsSuccessStatusCode) { return; }
 
                 var playerSearchContent = await playerSearchRequest.Content.ReadAsStringAsync();
                 var playerSearchResponse = JsonConvert.DeserializeObject<XivApiCharacterSearchResponse>(playerSearchContent);
                 if (playerSearchResponse.Results.Count == 0) { return; }
 
-                characterId = playerSearchResponse.Results.FirstOrDefault(player => player.Name == pi.ClientState.LocalPlayer.Name).ID;
+                characterId = playerSearchResponse.Results.FirstOrDefault(player => player.Name == ClientState.LocalPlayer.Name.TextValue).ID;
 
                 if (characterId == default)
                 {
@@ -160,10 +178,27 @@ namespace FCNameColor
             var memberSearchResponse = JsonConvert.DeserializeObject<XivApiMemberSearchResponse>(memberSearchContent);
             if (memberSearchResponse.FreeCompanyMembers != null)
             {
-                configuration.FcMembers = memberSearchResponse.FreeCompanyMembers;
-                configuration.Save();
-                PluginLog.Debug($"Fetched {configuration.FcMembers.Count} members");
+                config.FcMembers = memberSearchResponse.FreeCompanyMembers;
+                config.Save();
+                PluginLog.Debug($"Fetched {config.FcMembers.Count} members");
+
+                if (firstTime)
+                {
+                    Chat.Print($"[FCNameColor]: First-time setup finished. Fetched {config.FcMembers.Count} members.");
+                    firstTime = false;
+                }
             }
+            Loading = false;
+        }
+
+        private SeString BuildSEString(string content)
+        {
+            return new SeString(new List<Payload>())
+                    .Append(new UIForegroundPayload(Convert.ToUInt16(config.UiColor)))
+                    .Append(new UIGlowPayload(config.Glow ? Convert.ToUInt16(config.UiColor) : (ushort)0))
+                    .Append(new TextPayload(content))
+                    .Append(UIGlowPayload.UIGlowOff)
+                    .Append(UIForegroundPayload.UIForegroundOff);
         }
 
         internal IntPtr SetNamePlateDetour(IntPtr namePlateObjectPtr, bool isPrefixTitle, bool displayTitle, IntPtr title, IntPtr name, IntPtr fcName, int iconID)
@@ -182,8 +217,8 @@ namespace FCNameColor
 
         internal IntPtr SetNamePlate(IntPtr namePlateObjectPtr, bool isPrefixTitle, bool displayTitle, IntPtr title, IntPtr name, IntPtr fcName, int iconID)
         {
-            Func<IntPtr> original = () => SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
-            if (!configuration.Enabled || configuration.FcMembers == null)
+            IntPtr original() => SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
+            if (!config.Enabled || config.FcMembers == null)
             {
                 return original();
             }
@@ -200,12 +235,7 @@ namespace FCNameColor
                 return original();
             }
 
-            var actorID = npInfo.Data.ActorID;
-            if (actorID == -1)
-            {
-                return original();
-            }
-
+            var objectID = npInfo.Data.ObjectID.ObjectID;
             if (!npInfo.IsPlayerCharacter())  // Only PlayerCharacters should have their colors changed.
             {
                 return original();
@@ -213,25 +243,25 @@ namespace FCNameColor
 
             var isLocalPlayer = npObject.IsLocalPlayer;
             var isPartyMember = npInfo.IsPartyMember();
-            var isInDuty = pi.ClientState.Condition[Dalamud.Game.ClientState.ConditionFlag.BoundByDuty];
+            var isInDuty = Condition[ConditionFlag.BoundByDuty];
 
-            if (isLocalPlayer && !configuration.IncludeSelf)
+            if (isLocalPlayer && !config.IncludeSelf)
             {
                 return original();
             }
 
-            PlayerCharacter target = (PlayerCharacter)Enumerable.FirstOrDefault(pi.ClientState.Actors, actor => actor.ActorId == actorID);
-            if (target == default(PlayerCharacter) || target.HomeWorld.Id != pi.ClientState.LocalPlayer.HomeWorld.Id)
+            PlayerCharacter target = (PlayerCharacter)Enumerable.FirstOrDefault(Objects, actor => actor.ObjectId == objectID);
+            if (target == default(PlayerCharacter) || target.HomeWorld.Id != ClientState.LocalPlayer.HomeWorld.Id)
             {
                 return original();
             }
 
-            if (!configuration.FcMembers.Exists(member => member.Name == target.Name))
+            if (!config.FcMembers.Exists(member => member.Name == target.Name.TextValue))
             {
                 return original();
             }
 
-            if (!lastColor.Equals(configuration.UiColor) || lastOnlyColorFCTag != configuration.OnlyColorFCTag)
+            if (lastSettings != config.GetHashCode())
             {
                 PluginLog.Debug($"Settings changed. Clearing cache.");
                 foreach (var cacheItem in cache)
@@ -241,19 +271,19 @@ namespace FCNameColor
                 cache.Clear();
             }
 
-            var tag = pi.SeStringManager.Parse(XivApi.ReadSeStringBytes(npInfo.FcNameAddress)).TextValue;
+            var tag = SeString.Parse(XivApi.ReadSeStringBytes(npInfo.FcNameAddress)).TextValue;
 
-            if (cache.ContainsKey(actorID))
+            if (cache.ContainsKey(objectID))
             {
-                var cacheItem = cache[actorID];
+                var cacheItem = cache[objectID];
                 if (cacheItem.FC != tag || (!isLocalPlayer && !isPartyMember && cacheItem.Title != npInfo.Title))
                 {
                     cacheItem.Dispose();
-                    cache.Remove(actorID);
+                    cache.Remove(objectID);
                 }
             }
 
-            if (!cache.ContainsKey(actorID))
+            if (!cache.ContainsKey(objectID))
             {
                 var playerPointer = new PlayerPointer
                 {
@@ -263,52 +293,78 @@ namespace FCNameColor
 
                 if (!isInDuty)
                 {
-
-
-                    var newFCString = new SeString(new List<Payload>())
-                        .Append(new UIForegroundPayload(pi.Data, Convert.ToUInt16(configuration.UiColor)))
-                        .Append(new TextPayload(tag))
-                        .Append(UIForegroundPayload.UIForegroundOff);
-                    var newFcNamePtr = SeStringToSeStringPtr(newFCString);
+                    var newFCString = BuildSEString(tag);
+                    var newFcNamePtr = XivApi.SeStringToSeStringPtr(newFCString);
                     playerPointer.FcPtr = newFcNamePtr;
                     playerPointer.FC = tag;
                 }
 
-                var shouldReplaceName = isInDuty ? (configuration.IncludeDuties && !isLocalPlayer) : (!configuration.OnlyColorFCTag && !isPartyMember && !isLocalPlayer);
-                PluginLog.Debug($"shouldReplaceName: {shouldReplaceName}, OnlyColorFCTag: {configuration.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
+                var shouldReplaceName = isInDuty ? (config.IncludeDuties && !isLocalPlayer) : (!config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer);
+                PluginLog.Debug($"Name: {npInfo.Name}, shouldReplaceName: {shouldReplaceName}, IsInDuty: {isInDuty}, OnlyColorFCTag: {config.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
                 if (shouldReplaceName)
                 {
-                    var newNameString = new SeString(new List<Payload>())
-                        .Append(new UIForegroundPayload(pi.Data, Convert.ToUInt16(configuration.UiColor)))
-                        .Append(new TextPayload(pi.SeStringManager.Parse(XivApi.ReadSeStringBytes(npInfo.NameAddress)).TextValue))
-                        .Append(UIForegroundPayload.UIForegroundOff);
-                    var newNamePtr = SeStringToSeStringPtr(newNameString);
+                    var newNameString = BuildSEString(SeString.Parse(XivApi.ReadSeStringBytes(npInfo.NameAddress)).TextValue);
+                    var newNamePtr = XivApi.SeStringToSeStringPtr(newNameString);
                     playerPointer.NamePtr = newNamePtr;
 
                     if (displayTitle && !string.IsNullOrEmpty(npInfo.Title))
                     {
-                        var newTitleString = new SeString(new List<Payload>())
-                          .Append(new UIForegroundPayload(pi.Data, Convert.ToUInt16(configuration.UiColor)))
-                          .Append(new TextPayload($"《{pi.SeStringManager.Parse(XivApi.ReadSeStringBytes(npInfo.TitleAddress)).TextValue}》"))
-                          .Append(UIForegroundPayload.UIForegroundOff);
-                        var newTitlePtr = SeStringToSeStringPtr(newTitleString);
+                        var newTitleString = BuildSEString($"《{SeString.Parse(XivApi.ReadSeStringBytes(npInfo.TitleAddress)).TextValue}》");
+                        var newTitlePtr = XivApi.SeStringToSeStringPtr(newTitleString);
                         playerPointer.TitlePtr = newTitlePtr;
                     }
                 }
-                cache.Add(actorID, playerPointer);
-                PluginLog.Debug($"Overriding player nameplate for {npInfo.Name} (ActorID {actorID})");
+                cache.Add(objectID, playerPointer);
+                PluginLog.Debug($"Overriding player nameplate for {npInfo.Name} (ActorID {objectID})");
             }
 
             var isDead = target.CurrentHp == 0;
 
-            var entry = cache[actorID];
+            var entry = cache[objectID];
             var newName = entry.NamePtr != IntPtr.Zero ? entry.NamePtr : name;
             var newTitle = entry.TitlePtr != IntPtr.Zero ? entry.TitlePtr : title;
             var newFCName = entry.FcPtr != IntPtr.Zero && !isInDuty ? entry.FcPtr : fcName;
 
-            lastColor = configuration.UiColor;
-            lastOnlyColorFCTag = configuration.OnlyColorFCTag;
+            lastSettings = config.GetHashCode();
             return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, newTitle, newName, newFCName, iconID);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            try
+            {
+                if (disposing)
+                {
+                    ui.Dispose();
+                    client.Dispose();
+
+                    Commands.RemoveHandler(commandName);
+                    Framework.Update -= OnFrameworkUpdate;
+                    ClientState.Login -= OnLogin;
+                    Pi.Dispose();
+
+                    SetNamePlateHook.Disable();
+                    SetNamePlateHook.Dispose();
+
+                    XivApi.DisposeInstance();
+                    foreach (var ptr in cache)
+                    {
+                        ptr.Value.Dispose();
+                    }
+                    cache.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Error(ex, "Failed to dispose properly.");
+            }
+
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }
