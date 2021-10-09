@@ -4,7 +4,7 @@
   "Punchline": "Color your FC member’s FC tags",
   "Description": "Color your FC’s tag or the entire nameplate if they are in your FC. Use /fcnc to open up the config.",
   "InternalName": "FCNameColor",
-  "AssemblyVersion": "2.0.0.1",
+  "AssemblyVersion": "2.0.0.2",
   "RepoUrl": "https://github.com/WesselKuipers/FCNameColor",
   "IconUrl": "https://github.com/WesselKuipers/FCNameColor/raw/master/images/icon.png",
   "ApplicableVersion": "any",

@@ -13,12 +13,15 @@ using Dalamud.Hooking;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using XivCommon;
+using XivCommon.Functions.NamePlates;
 
 namespace FCNameColor
 {
@@ -40,38 +43,31 @@ namespace FCNameColor
         public static ChatGui Chat { get; private set; }
 
         [PluginService]
-        public static GameGui GUI { get; private set; }
-
-        [PluginService]
         public static Condition Condition { get; private set; }
 
         [PluginService]
         public static ObjectTable Objects { get; private set; }
 
-    [PluginService]
+        [PluginService]
         public static CommandManager Commands { get; private set; }
 
         [PluginService]
         public static Framework Framework { get; private set; }
 
-        [PluginService]
-        public static PartyList PartyList { get; private set; }
 
-        private PluginAddressResolver address;
-        private PluginUI ui { get; }
-        private Dictionary<uint, PlayerPointer> cache;
-        private HttpClient client;
+        private readonly XivCommonBase XivCommonBase;
+        private PluginUI UI { get; }
+        private readonly HttpClient client;
         private int lastSettings;
         private int characterId;
-        private Hook<SetNamePlateDelegate> SetNamePlateHook;
         private bool loggingIn;
         private bool firstTime = false;
         public static bool Loading;
 
         public Plugin(SigScanner scanner, GameGui gui, DataManager dataManager)
         {
-            cache = new Dictionary<uint, PlayerPointer>();
             client = new HttpClient();
+
             characterId = -1;
 
             config = Pi.GetPluginConfig() as Configuration;
@@ -83,14 +79,10 @@ namespace FCNameColor
             config.Initialize(Pi);
             lastSettings = config.GetHashCode();
 
-            address = new PluginAddressResolver();
-            address.Setup(scanner);
+            XivCommonBase = new XivCommonBase(Hooks.NamePlates);
+            XivCommonBase.Functions.NamePlates.OnUpdate += NamePlates_OnUpdate;
 
-            XivApi.Initialize(address);
-            SetNamePlateHook = new Hook<SetNamePlateDelegate>(address.AddonNamePlate_SetNamePlatePtr, new SetNamePlateDelegate(SetNamePlateDetour));
-            SetNamePlateHook.Enable();
-
-            ui = new PluginUI(config, dataManager);
+            UI = new PluginUI(config, dataManager);
 
             Commands.AddHandler(commandName, new CommandInfo(OnCommand)
             {
@@ -110,12 +102,12 @@ namespace FCNameColor
 
         private void OnCommand(string command, string args)
         {
-            ui.Visible = true;
+            UI.Visible = true;
         }
 
         private void DrawConfigUI()
         {
-            ui.Visible = true;
+            UI.Visible = true;
         }
 
         private void OnLogin(object sender, EventArgs e)
@@ -141,7 +133,7 @@ namespace FCNameColor
 
         private void DrawUI()
         {
-            ui.Draw();
+            UI.Draw();
         }
 
         private async Task FetchData()
@@ -201,141 +193,78 @@ namespace FCNameColor
                     .Append(UIForegroundPayload.UIForegroundOff);
         }
 
-        internal IntPtr SetNamePlateDetour(IntPtr namePlateObjectPtr, bool isPrefixTitle, bool displayTitle, IntPtr title, IntPtr name, IntPtr fcName, int iconID)
-        {
-            try
-            {
-                return SetNamePlate(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
-            }
-            catch (Exception ex)
-            {
-                PluginLog.Error(ex, $"SetNamePlateDetour encountered a critical error");
-            }
 
-            return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
-        }
-
-        internal IntPtr SetNamePlate(IntPtr namePlateObjectPtr, bool isPrefixTitle, bool displayTitle, IntPtr title, IntPtr name, IntPtr fcName, int iconID)
+        private unsafe void NamePlates_OnUpdate(NamePlateUpdateEventArgs args)
         {
-            IntPtr original() => SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, title, name, fcName, iconID);
             if (!config.Enabled || config.FcMembers == null)
             {
-                return original();
+                return;
             }
 
-            var npObject = new XivApi.SafeNamePlateObject(namePlateObjectPtr);
-            if (npObject == null)
+            if (args.Type != PlateType.Player || args.ObjectId == 0)
             {
-                return original();
+                return;
             }
 
-            var npInfo = npObject.NamePlateInfo;
-            if (npInfo == null)
-            {
-                return original();
-            }
+            var objectID = args.ObjectId;
+            var target = (PlayerCharacter)Objects.SearchById(objectID);
 
-            var objectID = npInfo.Data.ObjectID.ObjectID;
-            if (!npInfo.IsPlayerCharacter())  // Only PlayerCharacters should have their colors changed.
-            {
-                return original();
-            }
-
-            var isLocalPlayer = npObject.IsLocalPlayer;
-            var isPartyMember = npInfo.IsPartyMember();
+            var isLocalPlayer = ClientState.LocalPlayer.ObjectId == objectID;
+            var isPartyMember = GroupManager.Instance()->IsObjectIDInAlliance(objectID);
             var isInDuty = Condition[ConditionFlag.BoundByDuty];
-
-            if (isLocalPlayer && !config.IncludeSelf)
+            
+            if (target == default(PlayerCharacter) || (isLocalPlayer && !config.IncludeSelf))
             {
-                return original();
+                return;
             }
 
-            PlayerCharacter target = (PlayerCharacter)Enumerable.FirstOrDefault(Objects, actor => actor.ObjectId == objectID);
-            if (target == default(PlayerCharacter) || target.HomeWorld.Id != ClientState.LocalPlayer.HomeWorld.Id)
+            if (target.CurrentHp == 0)
             {
-                return original();
+                return;
+            }
+
+            if (target.HomeWorld.Id != ClientState.LocalPlayer.HomeWorld.Id)
+            {
+                return;
             }
 
             if (!config.FcMembers.Exists(member => member.Name == target.Name.TextValue))
             {
-                return original();
+                return;
             }
 
-            if (lastSettings != config.GetHashCode())
+            if (!isInDuty)
             {
-                PluginLog.Debug($"Settings changed. Clearing cache.");
-                foreach (var cacheItem in cache)
-                {
-                    cacheItem.Value.Dispose();
-                }
-                cache.Clear();
+                var newFCString = BuildSEString(args.FreeCompany.TextValue);
+                args.FreeCompany = newFCString;
             }
 
-            var tag = SeString.Parse(XivApi.ReadSeStringBytes(npInfo.FcNameAddress)).TextValue;
-
-            if (cache.ContainsKey(objectID))
+            var shouldReplaceName = isInDuty ? (config.IncludeDuties && !isLocalPlayer) : (!config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer);
+            PluginLog.Debug($"Name: {args.Name.TextValue}, shouldReplaceName: {shouldReplaceName}, IsInDuty: {isInDuty}, OnlyColorFCTag: {config.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
+            if (shouldReplaceName)
             {
-                var cacheItem = cache[objectID];
-                if (cacheItem.FC != tag || (!isLocalPlayer && !isPartyMember && cacheItem.Title != npInfo.Title))
+                var newNameString = BuildSEString(args.Name.TextValue);
+                args.Name = newNameString;
+
+                if (args.Title != null)
                 {
-                    cacheItem.Dispose();
-                    cache.Remove(objectID);
+                    var newTitleString = BuildSEString(args.Title.TextValue);
+                    args.Title = newTitleString;
                 }
             }
-
-            if (!cache.ContainsKey(objectID))
-            {
-                var playerPointer = new PlayerPointer
-                {
-                    Name = npInfo.Name,
-                    Title = npInfo.Title
-                };
-
-                if (!isInDuty)
-                {
-                    var newFCString = BuildSEString(tag);
-                    var newFcNamePtr = XivApi.SeStringToSeStringPtr(newFCString);
-                    playerPointer.FcPtr = newFcNamePtr;
-                    playerPointer.FC = tag;
-                }
-
-                var shouldReplaceName = isInDuty ? (config.IncludeDuties && !isLocalPlayer) : (!config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer);
-                PluginLog.Debug($"Name: {npInfo.Name}, shouldReplaceName: {shouldReplaceName}, IsInDuty: {isInDuty}, OnlyColorFCTag: {config.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
-                if (shouldReplaceName)
-                {
-                    var newNameString = BuildSEString(SeString.Parse(XivApi.ReadSeStringBytes(npInfo.NameAddress)).TextValue);
-                    var newNamePtr = XivApi.SeStringToSeStringPtr(newNameString);
-                    playerPointer.NamePtr = newNamePtr;
-
-                    if (displayTitle && !string.IsNullOrEmpty(npInfo.Title))
-                    {
-                        var newTitleString = BuildSEString($"《{SeString.Parse(XivApi.ReadSeStringBytes(npInfo.TitleAddress)).TextValue}》");
-                        var newTitlePtr = XivApi.SeStringToSeStringPtr(newTitleString);
-                        playerPointer.TitlePtr = newTitlePtr;
-                    }
-                }
-                cache.Add(objectID, playerPointer);
-                PluginLog.Debug($"Overriding player nameplate for {npInfo.Name} (ActorID {objectID})");
-            }
-
-            var isDead = target.CurrentHp == 0;
-
-            var entry = cache[objectID];
-            var newName = entry.NamePtr != IntPtr.Zero ? entry.NamePtr : name;
-            var newTitle = entry.TitlePtr != IntPtr.Zero ? entry.TitlePtr : title;
-            var newFCName = entry.FcPtr != IntPtr.Zero && !isInDuty ? entry.FcPtr : fcName;
+            PluginLog.Debug($"Overriding player nameplate for {args.Name.TextValue} (ActorID {objectID})");
 
             lastSettings = config.GetHashCode();
-            return SetNamePlateHook.Original(namePlateObjectPtr, isPrefixTitle, displayTitle, newTitle, newName, newFCName, iconID);
         }
 
+       
         protected virtual void Dispose(bool disposing)
         {
             try
             {
                 if (disposing)
                 {
-                    ui.Dispose();
+                    UI.Dispose();
                     client.Dispose();
 
                     Commands.RemoveHandler(commandName);
@@ -343,15 +272,8 @@ namespace FCNameColor
                     ClientState.Login -= OnLogin;
                     Pi.Dispose();
 
-                    SetNamePlateHook.Disable();
-                    SetNamePlateHook.Dispose();
-
-                    XivApi.DisposeInstance();
-                    foreach (var ptr in cache)
-                    {
-                        ptr.Value.Dispose();
-                    }
-                    cache.Clear();
+                    XivCommonBase.Functions.NamePlates.OnUpdate -= NamePlates_OnUpdate;
+                    XivCommonBase.Dispose();
                 }
             }
             catch (Exception ex)
