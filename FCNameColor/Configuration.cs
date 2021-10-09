@@ -1,6 +1,5 @@
 ﻿using Dalamud.Configuration;
 using Dalamud.Plugin;
-using FCNameColor;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -33,11 +32,6 @@ namespace FCNameColor
         public void Save()
         {
             pluginInterface.SavePluginConfig(this);
-        }
-
-        public override int GetHashCode()
-        {
-            return Enabled.GetHashCode() + OnlyColorFCTag.GetHashCode() + IncludeSelf.GetHashCode() + IncludeDuties.GetHashCode() + UiColor.GetHashCode() + Glow.GetHashCode();
         }
     }
 }
