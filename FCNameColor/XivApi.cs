@@ -1,19 +1,15 @@
-﻿using System.Collections.Generic;
-
-namespace FCNameColor
+﻿namespace FCNameColor
 {
-    public struct XivApiSearchResponseCharacter
+    public struct FC
     {
-        public int ID;
+        public string ID;
         public string Name;
+        public FCMember[] Members;
     }
 
-    public struct XivApiCharacterSearchResponse
+    public struct FCMember
     {
-        public List<XivApiSearchResponseCharacter> Results;
-    }
-    public struct XivApiMemberSearchResponse
-    {
-        public List<XivApiSearchResponseCharacter> FreeCompanyMembers;
+        public string ID;
+        public string Name;
     }
 }

@@ -38,6 +38,7 @@ namespace FCNameColor
         public PluginUI(Configuration config, DataManager data)
         {
             configuration = config;
+
             var list = new List<UIColor>(data.GetExcelSheet<UIColor>().Distinct(new UIColorComparer()));
             list.Sort((a, b) =>
             {

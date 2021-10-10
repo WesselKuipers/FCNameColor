@@ -61,4 +61,7 @@
     </None>
     <Content Include="..\images\icon.png" Link="images\icon.png" CopyToOutputDirectory="Always" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NetStone\NetStone\NetStone.csproj" />
+  </ItemGroup>
 </Project>

@@ -12,6 +12,8 @@ using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
+using NetStone;
+using NetStone.Model.Parseables.FreeCompany.Members;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -54,20 +56,16 @@ namespace FCNameColor
 
 
         private readonly XivCommonBase XivCommonBase;
+        private LodestoneClient lodestoneClient;
         private PluginUI UI { get; }
-        private readonly HttpClient client;
         private int lastSettings;
-        private int characterId;
         private bool loggingIn;
         private bool firstTime = false;
+        private List<FCMember> members;
         public static bool Loading;
 
         public Plugin(SigScanner scanner, GameGui gui, DataManager dataManager)
         {
-            client = new HttpClient();
-
-            characterId = -1;
-
             config = Pi.GetPluginConfig() as Configuration;
             if (config == null)
             {
@@ -112,7 +110,7 @@ namespace FCNameColor
         {
             // LocalPlayer is still null at this point, so we just set a flag that indicates we're logging in.
             loggingIn = true;
-            characterId = -1;
+            members = null;
         }
 
         private void OnFrameworkUpdate(Framework framework)
@@ -137,64 +135,92 @@ namespace FCNameColor
         private async Task FetchData()
         {
             Loading = true;
+            PluginLog.Debug("Fetching data");
 
             if (firstTime)
             {
                 Chat.Print("[FCNameColor]: First-time setup - Fetching FC members from Lodestone. Plugin will work once this is done.");
             }
 
-            if (characterId == -1)
+            if (lodestoneClient == null)
             {
-                var playerSearchRequest = await client.GetAsync($"https://xivapi.com/character/search?name={ClientState.LocalPlayer.Name}&server={ClientState.LocalPlayer.HomeWorld.GameData.Name}");
-                if (!playerSearchRequest.IsSuccessStatusCode) { return; }
+                lodestoneClient = await LodestoneClient.GetClientAsync();
+            }
 
-                var playerSearchContent = await playerSearchRequest.Content.ReadAsStringAsync();
-                var playerSearchResponse = JsonConvert.DeserializeObject<XivApiCharacterSearchResponse>(playerSearchContent);
-                if (playerSearchResponse.Results.Count == 0) { return; }
+            var playerCacheName = $"{ClientState.LocalPlayer.Name}@{ClientState.LocalPlayer.HomeWorld.GameData.Name}";
+            config.PlayerIDs.TryGetValue(playerCacheName, out string playerId);
 
-                characterId = playerSearchResponse.Results.FirstOrDefault(player => player.Name == ClientState.LocalPlayer.Name.TextValue).ID;
-
-                if (characterId == default)
+            if (string.IsNullOrEmpty(playerId))
+            {
+                var playerSearch = await lodestoneClient.SearchCharacter(new NetStone.Search.Character.CharacterSearchQuery() { World = ClientState.LocalPlayer.HomeWorld.GameData.Name, CharacterName = ClientState.LocalPlayer.Name.TextValue });
+                playerId = playerSearch.Results.FirstOrDefault(entry => entry.Name == ClientState.LocalPlayer.Name.TextValue)?.Id;
+                if (string.IsNullOrEmpty(playerId))
                 {
-                    PluginLog.Error("Could not find your character.");
+                    PluginLog.Error("Could not find player on Lodestone");
                     return;
                 }
+                config.PlayerIDs[playerCacheName] = playerId;
             }
 
-            var memberSearchRequest = await client.GetAsync($"https://xivapi.com/character/{characterId}?data=FCM");
-            if (!memberSearchRequest.IsSuccessStatusCode) { return; }
-
-            var memberSearchContent = await memberSearchRequest.Content.ReadAsStringAsync();
-            var memberSearchResponse = JsonConvert.DeserializeObject<XivApiMemberSearchResponse>(memberSearchContent);
-            if (memberSearchResponse.FreeCompanyMembers != null)
+            var fcFetched = config.PlayerFCs.TryGetValue(playerId, out FC fc);
+            if (!fcFetched)
             {
-                config.FcMembers = memberSearchResponse.FreeCompanyMembers;
-                config.Save();
-                PluginLog.Debug($"Fetched {config.FcMembers.Count} members");
-
-                if (firstTime)
+                var player = await lodestoneClient.GetCharacter(playerId);
+                if (player.FreeCompany == null)
                 {
-                    Chat.Print($"[FCNameColor]: First-time setup finished. Fetched {config.FcMembers.Count} members.");
-                    firstTime = false;
+                    PluginLog.Debug("Player is not in an FC.");
+                    return;
                 }
+                fc = new FC() { ID = player.FreeCompany.Id, Name = player.FreeCompany.Name };
             }
+
+            // Fetch the first page of FC members.
+            // This will also contain the amount of additional pages of members that may have to be retrieved.
+            var fcMemberResult = await lodestoneClient.GetFreeCompanyMembers(fc.ID);
+            members = new List<FCMember>();
+            members.AddRange(fcMemberResult.Members.Select(res => new FCMember() { ID = res.Id, Name = res.Name }));
+
+            // Fire off asyncs requests for fetching members for each remaining page
+            if (fcMemberResult.NumPages > 1)
+            {
+                var taskList = new List<Task<FreeCompanyMembers>>();
+                foreach (var index in Enumerable.Range(2, fcMemberResult.NumPages - 1))
+                {
+                    PluginLog.Debug($"Fetching page {index}");
+                    taskList.Add(lodestoneClient.GetFreeCompanyMembers(fc.ID, index));
+                }
+                await Task.WhenAll(taskList);
+                taskList.ForEach(task => members.AddRange(task.Result.Members.Select(res => new FCMember() { ID = res.Id, Name = res.Name })));
+            }
+
+            fc.Members = members.ToArray();
+            config.PlayerFCs[playerId] = fc;
+            config.Save();
             Loading = false;
+            PluginLog.Debug($"Finished fetching data. Fetched {members.Count} members.");
+
+            if (firstTime)
+            {
+                Chat.Print($"[FCNameColor]: First-time setup finished. Fetched {members.Count} members.");
+                firstTime = false;
+            }
         }
 
         private SeString BuildSEString(string content)
         {
-            return new SeString(new List<Payload>())
-                    .Append(new UIForegroundPayload(Convert.ToUInt16(config.UiColor)))
-                    .Append(new UIGlowPayload(config.Glow ? Convert.ToUInt16(config.UiColor) : (ushort)0))
-                    .Append(new TextPayload(content))
-                    .Append(UIGlowPayload.UIGlowOff)
-                    .Append(UIForegroundPayload.UIForegroundOff);
+            return new SeString(new Payload[] {
+                new UIForegroundPayload(Convert.ToUInt16(config.UiColor)),
+                new UIGlowPayload(config.Glow ? Convert.ToUInt16(config.UiColor) : (ushort)0),
+                new TextPayload(content),
+                UIGlowPayload.UIGlowOff,
+                UIForegroundPayload.UIForegroundOff
+            });
         }
 
 
         private unsafe void NamePlates_OnUpdate(NamePlateUpdateEventArgs args)
         {
-            if (!config.Enabled || config.FcMembers == null)
+            if (!config.Enabled || members == null)
             {
                 return;
             }
@@ -210,12 +236,13 @@ namespace FCNameColor
             var isLocalPlayer = ClientState.LocalPlayer.ObjectId == objectID;
             var isPartyMember = GroupManager.Instance()->IsObjectIDInAlliance(objectID);
             var isInDuty = Condition[ConditionFlag.BoundByDuty];
-            
+
             if (target == default(PlayerCharacter) || (isLocalPlayer && !config.IncludeSelf))
             {
                 return;
             }
 
+            // Skip any player who is dead, colouring the name of dead characters makes them harder to recognize.
             if (target.CurrentHp == 0)
             {
                 return;
@@ -226,19 +253,20 @@ namespace FCNameColor
                 return;
             }
 
-            if (!config.FcMembers.Exists(member => member.Name == target.Name.TextValue))
+            if (!members.Exists(member => member.Name == target.Name.TextValue))
             {
                 return;
             }
 
-            if (!isInDuty)
+            var shouldReplaceName = isInDuty ? (config.IncludeDuties && !isLocalPlayer) : (!config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer);
+            PluginLog.Debug($"Name: {args.Name.TextValue}, shouldReplaceName: {shouldReplaceName}, IsInDuty: {isInDuty}, OnlyColorFCTag: {config.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
+
+            if (!isInDuty && !shouldReplaceName)
             {
                 var newFCString = BuildSEString(args.FreeCompany.TextValue);
                 args.FreeCompany = newFCString;
             }
 
-            var shouldReplaceName = isInDuty ? (config.IncludeDuties && !isLocalPlayer) : (!config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer);
-            PluginLog.Debug($"Name: {args.Name.TextValue}, shouldReplaceName: {shouldReplaceName}, IsInDuty: {isInDuty}, OnlyColorFCTag: {config.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
             if (shouldReplaceName)
             {
                 var newNameString = BuildSEString(args.Name.TextValue);
@@ -255,7 +283,7 @@ namespace FCNameColor
             lastSettings = config.GetHashCode();
         }
 
-       
+
         protected virtual void Dispose(bool disposing)
         {
             try
@@ -263,7 +291,6 @@ namespace FCNameColor
                 if (disposing)
                 {
                     UI.Dispose();
-                    client.Dispose();
 
                     Commands.RemoveHandler(commandName);
                     Framework.Update -= OnFrameworkUpdate;

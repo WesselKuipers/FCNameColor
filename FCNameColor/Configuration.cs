@@ -12,14 +12,22 @@ namespace FCNameColor
         public int Version { get; set; } = 0;
 
         public bool Enabled { get; set; } = true;
-        public bool OnlyColorFCTag { get; set; } = false;
-        public bool IncludeSelf { get; set; } = false;
+        public bool OnlyColorFCTag { get; set; } = true;
+        public bool IncludeSelf { get; set; } = true;
         public bool IncludeDuties { get; set; } = true;
         public bool Glow { get; set; } = false;
-        public Vector4 Color { get; set; } = new Vector4(204, 55, 55, 255); // The same as UiColor 14.
+        public Vector4 Color { get; set; } = new Vector4(0.8f, 0.21568628f, 0.21568628f, 1.0f); // The same as UiColor 14.
         public string UiColor { get; set; } = "14"; // A red-ish colour.
-        public List<XivApiSearchResponseCharacter> FcMembers { get; set; } = null;
 
+        /// <summary>
+        /// A mapping of character Name@Server and character IDs
+        /// </summary>
+        public Dictionary<string, string> PlayerIDs { get; set; } = new Dictionary<string, string>();
+
+        /// <summary>
+        /// A mapping of Player ID and their FC’s ID
+        /// </summary>
+        public Dictionary<string, FC> PlayerFCs { get; set; } = new Dictionary<string, FC>();
 
         [NonSerialized]
         private DalamudPluginInterface pluginInterface;
