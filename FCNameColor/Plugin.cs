@@ -152,6 +152,7 @@ namespace FCNameColor
 
             if (string.IsNullOrEmpty(playerId))
             {
+                PluginLog.Debug("Fetching character ID");
                 var playerSearch = await lodestoneClient.SearchCharacter(new NetStone.Search.Character.CharacterSearchQuery() { World = ClientState.LocalPlayer.HomeWorld.GameData.Name, CharacterName = ClientState.LocalPlayer.Name.TextValue });
                 playerId = playerSearch.Results.FirstOrDefault(entry => entry.Name == ClientState.LocalPlayer.Name.TextValue)?.Id;
                 if (string.IsNullOrEmpty(playerId))
@@ -165,6 +166,7 @@ namespace FCNameColor
             var fcFetched = config.PlayerFCs.TryGetValue(playerId, out FC fc);
             if (!fcFetched)
             {
+                PluginLog.Debug("Fetching FC ID via character page");
                 var player = await lodestoneClient.GetCharacter(playerId);
                 if (player.FreeCompany == null)
                 {
@@ -176,6 +178,7 @@ namespace FCNameColor
 
             // Fetch the first page of FC members.
             // This will also contain the amount of additional pages of members that may have to be retrieved.
+            PluginLog.Debug("Fetching members page 1");
             var fcMemberResult = await lodestoneClient.GetFreeCompanyMembers(fc.ID);
             members = new List<FCMember>();
             members.AddRange(fcMemberResult.Members.Select(res => new FCMember() { ID = res.Id, Name = res.Name }));
@@ -186,7 +189,7 @@ namespace FCNameColor
                 var taskList = new List<Task<FreeCompanyMembers>>();
                 foreach (var index in Enumerable.Range(2, fcMemberResult.NumPages - 1))
                 {
-                    PluginLog.Debug($"Fetching page {index}");
+                    PluginLog.Debug($"Fetching members page {index}");
                     taskList.Add(lodestoneClient.GetFreeCompanyMembers(fc.ID, index));
                 }
                 await Task.WhenAll(taskList);
