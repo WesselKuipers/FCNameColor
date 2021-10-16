@@ -14,11 +14,9 @@ using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using NetStone;
 using NetStone.Model.Parseables.FreeCompany.Members;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 using XivCommon;
 using XivCommon.Functions.NamePlates;
@@ -58,7 +56,6 @@ namespace FCNameColor
         private readonly XivCommonBase XivCommonBase;
         private LodestoneClient lodestoneClient;
         private PluginUI UI { get; }
-        private int lastSettings;
         private bool loggingIn;
         private bool firstTime = false;
         private List<FCMember> members;
@@ -73,7 +70,6 @@ namespace FCNameColor
                 config = new Configuration();
             }
             config.Initialize(Pi);
-            lastSettings = config.GetHashCode();
 
             XivCommonBase = new XivCommonBase(Hooks.NamePlates);
             XivCommonBase.Functions.NamePlates.OnUpdate += NamePlates_OnUpdate;
@@ -174,6 +170,10 @@ namespace FCNameColor
                     return;
                 }
                 fc = new FC() { ID = player.FreeCompany.Id, Name = player.FreeCompany.Name };
+            } else
+            {
+                PluginLog.Debug($"Loading {fc.Members.Length} cached FC members");
+                members = fc.Members.ToList();
             }
 
             // Fetch the first page of FC members.
@@ -238,10 +238,14 @@ namespace FCNameColor
 
             var isLocalPlayer = ClientState.LocalPlayer.ObjectId == objectID;
             var isPartyMember = GroupManager.Instance()->IsObjectIDInAlliance(objectID);
-            var isInDuty = Condition[ConditionFlag.BoundByDuty];
+            var isInDuty = Condition[ConditionFlag.BoundByDuty56];
 
             if (target == default(PlayerCharacter) || (isLocalPlayer && !config.IncludeSelf))
             {
+                return;
+            }
+
+            if (isInDuty && isLocalPlayer) {
                 return;
             }
 
@@ -264,6 +268,11 @@ namespace FCNameColor
             var shouldReplaceName = isInDuty ? (config.IncludeDuties && !isLocalPlayer) : (!config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer);
             PluginLog.Debug($"Name: {args.Name.TextValue}, shouldReplaceName: {shouldReplaceName}, IsInDuty: {isInDuty}, OnlyColorFCTag: {config.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
 
+            if (isInDuty && !isLocalPlayer) {
+                args.Colour = new() { A = (byte)(config.Color.W * 255), R = (byte)(config.Color.X * 255), G = (byte)(config.Color.Y * 255), B = (byte)(config.Color.Z * 255) };
+                return;
+            }
+
             if (!isInDuty && !shouldReplaceName)
             {
                 var newFCString = BuildSEString(args.FreeCompany.TextValue);
@@ -280,10 +289,12 @@ namespace FCNameColor
                     var newTitleString = BuildSEString(args.Title.TextValue);
                     args.Title = newTitleString;
                 }
+            } else
+            {
+                var newFCString = BuildSEString(args.FreeCompany.TextValue);
+                args.FreeCompany = newFCString;
             }
             PluginLog.Debug($"Overriding player nameplate for {args.Name.TextValue} (ActorID {objectID})");
-
-            lastSettings = config.GetHashCode();
         }
 
 

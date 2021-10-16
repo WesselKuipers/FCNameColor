@@ -20,8 +20,6 @@ namespace FCNameColor
         }
     }
 
-    // It is good to have this be disposable in general, in case you ever need it
-    // to do any cleanup
     class PluginUI : IDisposable
     {
         private readonly Configuration configuration;
@@ -96,7 +94,6 @@ namespace FCNameColor
                     ImGui.Text(" Fetching FC members from Lodestone...");
                 }
 
-                // can't ref a property, so use a local copy
                 var onlyColorFCTag = configuration.OnlyColorFCTag;
                 if (ImGui.Checkbox("Only color the FC tag", ref onlyColorFCTag))
                 {
