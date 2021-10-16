@@ -13,10 +13,10 @@ namespace FCNameColor
         public int APIVersion { get; }
 
         /// <summary>
-        /// Get all Players.
+        /// Get local players.
         /// </summary>
         /// <returns>A collection of strings in the form of (Name@Server PlayerID)</returns>
-        public IEnumerable<string> GetPlayers();
+        public IEnumerable<string> GetLocalPlayers();
         
         /// <summary>
         /// Get Player FCs.

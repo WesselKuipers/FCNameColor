@@ -9,7 +9,7 @@ namespace FCNameColor
     public class FCNameColorProvider
     {
         private const string LabelProviderApiVersion = "FCNameColor.APIVersion";
-        private const string LabelProviderGetPlayers = "FCNameColor.GetPlayers";
+        private const string LabelProviderGetLocalPlayers = "FCNameColor.GetLocalPlayers";
         private const string LabelProviderGetPlayerFCs = "FCNameColor.GetPlayerFCs";
         private const string LabelProviderGetFCMembers = "FCNameColor.GetFCMembers";
         private const string LabelProviderGetIgnoredPlayers = "FCNameColor.GetIgnoredPlayers";
@@ -18,7 +18,7 @@ namespace FCNameColor
         private const string LabelProviderSetEnabledState = "FCNameColor.SetEnabledState";
 
         private readonly ICallGateProvider<int> providerAPIVersion;
-        private readonly ICallGateProvider<IEnumerable<string>> providerGetPlayers;
+        private readonly ICallGateProvider<IEnumerable<string>> providerGetLocalPlayers;
         private readonly ICallGateProvider<IEnumerable<string>> providerGetPlayerFCs;
         private readonly ICallGateProvider<string, IEnumerable<string>> providerGetFCMembers;
         private readonly ICallGateProvider<IEnumerable<string>> providerGetIgnoredPlayers;
@@ -33,9 +33,9 @@ namespace FCNameColor
                 this.providerAPIVersion = pluginInterface.GetIpcProvider<int>(LabelProviderApiVersion);
                 this.providerAPIVersion.RegisterFunc(() => api.APIVersion);
                 
-                this.providerGetPlayers =
-                    pluginInterface.GetIpcProvider<IEnumerable<string>>(LabelProviderGetPlayers);
-                this.providerGetPlayers.RegisterFunc(api.GetPlayers);
+                this.providerGetLocalPlayers =
+                    pluginInterface.GetIpcProvider<IEnumerable<string>>(LabelProviderGetLocalPlayers);
+                this.providerGetLocalPlayers.RegisterFunc(api.GetLocalPlayers);
                 
                 this.providerGetPlayerFCs =
                     pluginInterface.GetIpcProvider<IEnumerable<string>>(LabelProviderGetPlayerFCs);
@@ -70,7 +70,7 @@ namespace FCNameColor
         public void Dispose()
         {
             this.providerAPIVersion?.UnregisterFunc();
-            this.providerGetPlayers?.UnregisterFunc();
+            this.providerGetLocalPlayers?.UnregisterFunc();
             this.providerGetPlayerFCs?.UnregisterFunc();
             this.providerGetFCMembers?.UnregisterFunc();
             this.providerGetIgnoredPlayers?.UnregisterFunc();

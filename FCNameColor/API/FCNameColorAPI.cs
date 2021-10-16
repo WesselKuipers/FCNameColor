@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Dalamud.Logging;
+using Lumina;
 
 namespace FCNameColor
 {
@@ -17,7 +19,7 @@ namespace FCNameColor
 
         public int APIVersion => 1;
         
-        public IEnumerable<string> GetPlayers()
+        public IEnumerable<string> GetLocalPlayers()
         {
             this.CheckInitialized();
             return this.configuration.PlayerIDs.ToList().Select(player => $"{player.Key} {player.Value}");
@@ -26,16 +28,23 @@ namespace FCNameColor
         public IEnumerable<string> GetPlayerFCs()
         {
             this.CheckInitialized();
-            return this.configuration.PlayerFCs.ToList().Select(fc => $"{fc.Key} {fc.Value}");
+            return this.configuration.PlayerFCs.ToList().Select(fc => $"{fc.Value.ID} {fc.Value.Name}");
         }
 
         public IEnumerable<string> GetFCMembers(string id)
         {
             this.CheckInitialized();
             var fcMembers = new List<string>();
-            if (!this.configuration.PlayerFCs.ContainsKey(id)) return fcMembers;
-            var fc = this.configuration.PlayerFCs[id];
-            fcMembers.AddRange(fc.Members.Select(member => $"{member.ID} {member.Name}"));
+            var fc = this.configuration.PlayerFCs.FirstOrDefault(pair => pair.Value.ID.Equals(id));
+            try
+            {
+                fcMembers.AddRange(fc.Value.Members.Select(member => $"{member.ID} {member.Name}"));
+            }
+            catch (Exception)
+            {
+                PluginLog.LogError("Free Company ID not found.");
+            }
+
             return fcMembers;
         }
 
