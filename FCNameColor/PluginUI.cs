@@ -5,6 +5,7 @@ using Lumina.Excel.GeneratedSheets;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Data;
+using Dalamud.Interface;
 
 namespace FCNameColor
 {
@@ -34,6 +35,9 @@ namespace FCNameColor
             get { return visible; }
             set { visible = value; }
         }
+
+        private bool showIgnoreList;
+        private string ignoreListInput = string.Empty;
 
         public PluginUI(Configuration config, DataManager data)
         {
@@ -75,7 +79,7 @@ namespace FCNameColor
                 return;
             }
 
-            ImGui.SetNextWindowSize(new Vector2(375, 440), ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSize(new Vector2(375, 500), ImGuiCond.FirstUseEver);
             ImGui.SetNextWindowSizeConstraints(new Vector2(375, 470), new Vector2(375, float.MaxValue));
             if (ImGui.Begin("FC Name Color Config", ref visible, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
@@ -159,6 +163,62 @@ namespace FCNameColor
                     ImGui.NextColumn();
                 }
                 ImGui.Columns(1);
+            }
+            
+            ImGui.Separator();
+            ImGui.Spacing();
+            if (ImGui.SmallButton("Ignore List"))
+            {
+                this.showIgnoreList = !this.showIgnoreList;
+            }
+
+            if (this.showIgnoreList)
+            {
+                ImGui.SetNextWindowSize(new Vector2(270, 200), ImGuiCond.FirstUseEver);
+                ImGui.Begin("FC Name Color Config - Ignore List");
+                var ignoredInput = this.ignoreListInput;
+                ImGui.TextWrapped("Don't update nameplates for these players.");
+                ImGui.Spacing();
+                ImGui.SetNextItemWidth(150f * ImGuiHelpers.GlobalScale);
+                if (ImGui.InputText("###AddPlayerToIgnoreList", ref ignoredInput, 30))
+                {
+                    this.ignoreListInput = ignoredInput;
+                }
+                ImGui.SameLine();
+                if (ImGui.SmallButton("Add Player"))
+                {
+                    if (string.IsNullOrEmpty(this.ignoreListInput) || this.configuration.IgnoredPlayerNames.Contains(this.ignoreListInput))
+                    {
+                        ImGui.OpenPopup("###AddPlayerToIgnoreListInvalid");
+                    }
+                    else
+                    {
+                        this.configuration.IgnoredPlayerNames.Add(ignoredInput);
+                        this.configuration.Save();
+                        this.ignoreListInput = string.Empty;
+                    }
+                }
+                if (ImGui.BeginPopup("###AddPlayerToIgnoreListInvalid"))
+                {
+                    ImGui.Text("Please enter a unique valid character name!");
+                    ImGui.EndPopup();
+                }
+
+                foreach (var player in this.configuration.IgnoredPlayerNames.ToList())
+                {
+                    ImGui.Spacing();
+                    ImGui.Text(player);
+                    ImGui.SameLine();
+                    ImGui.BeginGroup();
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.Text(FontAwesomeIcon.Times.ToIconString());
+                    ImGui.PopFont();
+                    ImGui.EndGroup();
+                    if (!ImGui.IsItemClicked(ImGuiMouseButton.Left)) continue;
+                    this.configuration.IgnoredPlayerNames.Remove(player);
+                    this.configuration.Save();
+                }
+                ImGui.End();
             }
             ImGui.End();
         }
