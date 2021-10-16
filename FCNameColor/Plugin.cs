@@ -57,6 +57,7 @@ namespace FCNameColor
 
         private readonly XivCommonBase XivCommonBase;
         private LodestoneClient lodestoneClient;
+        private FCNameColorProvider fcNameColorProvider;
         private PluginUI UI { get; }
         private int lastSettings;
         private bool loggingIn;
@@ -94,6 +95,8 @@ namespace FCNameColor
             {
                 _ = FetchData();
             }
+
+            this.fcNameColorProvider = new FCNameColorProvider(Pi, new FCNameColorAPI(this.config));
         }
 
         private void OnCommand(string command, string args)
@@ -294,6 +297,8 @@ namespace FCNameColor
                 if (disposing)
                 {
                     UI.Dispose();
+                    
+                    this.fcNameColorProvider.Dispose();
 
                     Commands.RemoveHandler(commandName);
                     Framework.Update -= OnFrameworkUpdate;
