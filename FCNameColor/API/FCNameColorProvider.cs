@@ -22,7 +22,7 @@ namespace FCNameColor
         private readonly ICallGateProvider<IEnumerable<string>> providerGetPlayerFCs;
         private readonly ICallGateProvider<string, IEnumerable<string>> providerGetFCMembers;
         private readonly ICallGateProvider<IEnumerable<string>> providerGetIgnoredPlayers;
-        private readonly ICallGateProvider<string, object> providerAddPlayerToIgnoredPlayers;
+        private readonly ICallGateProvider<string, string, object> providerAddPlayerToIgnoredPlayers;
         private readonly ICallGateProvider<string, object> providerRemovePlayerFromIgnoredPlayers;
         private readonly ICallGateProvider<bool, object> providerSetEnabledState;
 
@@ -50,7 +50,7 @@ namespace FCNameColor
                 this.providerGetIgnoredPlayers.RegisterFunc(api.GetIgnoredPlayers);
                 
                 this.providerAddPlayerToIgnoredPlayers =
-                    pluginInterface.GetIpcProvider<string, object>(LabelProviderAddPlayerToIgnoredPlayers);
+                    pluginInterface.GetIpcProvider<string, string, object>(LabelProviderAddPlayerToIgnoredPlayers);
                 this.providerAddPlayerToIgnoredPlayers.RegisterAction(api.AddPlayerToIgnoredPlayers);
                 
                 this.providerRemovePlayerFromIgnoredPlayers =

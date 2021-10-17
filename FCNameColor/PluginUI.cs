@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Data;
 using Dalamud.Interface;
+using Dalamud.Logging;
+using Lumina;
 
 namespace FCNameColor
 {
@@ -37,7 +39,7 @@ namespace FCNameColor
         }
 
         private bool showIgnoreList;
-        private string ignoreListInput = string.Empty;
+        private FCMember currentIgnoredPlayer;
 
         public PluginUI(Configuration config, DataManager data)
         {
@@ -176,38 +178,45 @@ namespace FCNameColor
             {
                 ImGui.SetNextWindowSize(new Vector2(270, 200), ImGuiCond.FirstUseEver);
                 ImGui.Begin("FC Name Color Config - Ignore List");
-                var ignoredInput = this.ignoreListInput;
                 ImGui.TextWrapped("Don't update nameplates for these players.");
                 ImGui.Spacing();
                 ImGui.SetNextItemWidth(150f * ImGuiHelpers.GlobalScale);
-                if (ImGui.InputText("###AddPlayerToIgnoreList", ref ignoredInput, 30))
+                var fcMembers = this.GetFCMembers();
+                var playerNames = fcMembers.Select(member => member.Name).ToArray();
+                var playerIndex = Array.IndexOf(playerNames, this.currentIgnoredPlayer.Name);
+                ImGui.SetNextItemWidth(170f * ImGuiHelpers.GlobalScale);
+                if (ImGui.Combo(
+                    "###AddPlayerToIgnoreList",
+                    ref playerIndex,
+                    playerNames,
+                    playerNames.Length))
                 {
-                    this.ignoreListInput = ignoredInput;
+                    this.currentIgnoredPlayer = fcMembers[playerIndex];
                 }
                 ImGui.SameLine();
                 if (ImGui.SmallButton("Add Player"))
                 {
-                    if (string.IsNullOrEmpty(this.ignoreListInput) || this.configuration.IgnoredPlayerNames.Contains(this.ignoreListInput))
+                    if (this.configuration.IgnoredPlayers.ContainsKey(this.currentIgnoredPlayer.Name))
                     {
-                        ImGui.OpenPopup("###AddPlayerToIgnoreListInvalid");
+                        ImGui.OpenPopup("###AddPlayerToIgnoreListDupe");
                     }
                     else
                     {
-                        this.configuration.IgnoredPlayerNames.Add(ignoredInput);
+                        this.configuration.IgnoredPlayers.Add(this.currentIgnoredPlayer.Name, this.currentIgnoredPlayer.ID);
                         this.configuration.Save();
-                        this.ignoreListInput = string.Empty;
                     }
                 }
-                if (ImGui.BeginPopup("###AddPlayerToIgnoreListInvalid"))
+
+                if (ImGui.BeginPopup("###AddPlayerToIgnoreListDupe"))
                 {
-                    ImGui.Text("Please enter a unique valid character name!");
+                    ImGui.Text("You've already added this player!");
                     ImGui.EndPopup();
                 }
-
-                foreach (var player in this.configuration.IgnoredPlayerNames.ToList())
+                
+                foreach (var (key, _) in this.configuration.IgnoredPlayers.ToList())
                 {
                     ImGui.Spacing();
-                    ImGui.Text(player);
+                    ImGui.Text(key);
                     ImGui.SameLine();
                     ImGui.BeginGroup();
                     ImGui.PushFont(UiBuilder.IconFont);
@@ -215,7 +224,7 @@ namespace FCNameColor
                     ImGui.PopFont();
                     ImGui.EndGroup();
                     if (!ImGui.IsItemClicked(ImGuiMouseButton.Left)) continue;
-                    this.configuration.IgnoredPlayerNames.Remove(player);
+                    this.configuration.IgnoredPlayers.Remove(key);
                     this.configuration.Save();
                 }
                 ImGui.End();
@@ -230,6 +239,20 @@ namespace FCNameColor
                 (float)temp[2] / 255,
                 (float)temp[1] / 255,
                 (float)temp[0] / 255);
+        }
+
+        private List<FCMember> GetFCMembers()
+        {
+            var fcMembers = new List<FCMember>();
+            var playersFCs = this.configuration.PlayerFCs;
+            foreach (var playerFC in playersFCs)
+            {
+                fcMembers.AddRange(playerFC.Value.Members);
+            }
+
+            fcMembers = fcMembers.Distinct().OrderBy(member => member.Name).ToList();
+
+            return fcMembers;
         }
     }
 }

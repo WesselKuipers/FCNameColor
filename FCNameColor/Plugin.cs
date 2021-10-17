@@ -259,7 +259,7 @@ namespace FCNameColor
                 return;
             }
 
-            if (!members.Exists(member => member.Name == target.Name.TextValue && !this.config.IgnoredPlayerNames.Contains(target.Name.TextValue)))
+            if (!members.Exists(member => member.Name == target.Name.TextValue) || this.config.IgnoredPlayers.ContainsKey(target.Name.TextValue))
             {
                 return;
             }

@@ -15,39 +15,40 @@ namespace FCNameColor
         /// <summary>
         /// Get local players.
         /// </summary>
-        /// <returns>A collection of strings in the form of (Name@Server PlayerID)</returns>
+        /// <returns>A collection of strings in the form of (Name@Server PlayerID).</returns>
         public IEnumerable<string> GetLocalPlayers();
         
         /// <summary>
         /// Get Player FCs.
         /// </summary>
-        /// <returns>A collection of strings in the form of (PlayerID FCID FCName)</returns>
+        /// <returns>A collection of strings in the form of (PlayerID FCID FCName).</returns>
         public IEnumerable<string> GetPlayerFCs();
         
         /// <summary>
         /// Get Player FCs.
         /// </summary>
         /// <param name="id">FC ID.</param>
-        /// <returns>A collection of strings in the form of (PlayerID PlayerName)</returns>
+        /// <returns>A collection of strings in the form of (PlayerID PlayerName).</returns>
         public IEnumerable<string> GetFCMembers(string id);
         
         /// <summary>
         /// Get ignored players list.
         /// </summary>
-        /// <returns>A collection of strings in the form of (PlayerName)</returns>
+        /// <returns>A collection of strings in the form of (PlayerID PlayerName).</returns>
         public IEnumerable<string> GetIgnoredPlayers();
-        
+
         /// <summary>
         /// Adds player to ignored list.
         /// </summary>
-        /// <param name="name">Player name.</param>
-        public void AddPlayerToIgnoredPlayers(string name);
-        
+        /// <param name="id">player lodestone id.</param>
+        /// <param name="name">player name.</param>
+        public void AddPlayerToIgnoredPlayers(string id, string name);
+
         /// <summary>
         /// Removes player from ignored list.
         /// </summary>
-        /// <param name="name">Player name.</param>
-        public void RemovePlayerFromIgnoredPlayers(string name);
+        /// <param name="id">player lodestone id.</param>
+        public void RemovePlayerFromIgnoredPlayers(string id);
 
         /// <summary>
         /// Update enabled state.

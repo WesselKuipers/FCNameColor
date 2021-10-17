@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Logging;
-using Lumina;
 
 namespace FCNameColor
 {
@@ -22,13 +21,13 @@ namespace FCNameColor
         public IEnumerable<string> GetLocalPlayers()
         {
             this.CheckInitialized();
-            return this.configuration.PlayerIDs.ToList().Select(player => $"{player.Key} {player.Value}");
+            return this.configuration.PlayerIDs.Distinct().ToList().Select(player => $"{player.Key} {player.Value}");
         }
 
         public IEnumerable<string> GetPlayerFCs()
         {
             this.CheckInitialized();
-            return this.configuration.PlayerFCs.ToList().Select(fc => $"{fc.Key} {fc.Value.ID} {fc.Value.Name}");
+            return this.configuration.PlayerFCs.Distinct().ToList().Select(fc => $"{fc.Key} {fc.Value.ID} {fc.Value.Name}");
         }
 
         public IEnumerable<string> GetFCMembers(string id)
@@ -45,29 +44,38 @@ namespace FCNameColor
                 PluginLog.LogError("Free Company ID not found.");
             }
 
-            return fcMembers;
+            return fcMembers.Distinct();
         }
 
         public IEnumerable<string> GetIgnoredPlayers()
         {
             this.CheckInitialized();
-            return this.configuration.IgnoredPlayerNames.ToList();
+            var ignoredPlayers = new List<string>();
+            ignoredPlayers.AddRange(this.configuration.IgnoredPlayers.Select(player => $"{player.Value} {player.Key}"));
+            return ignoredPlayers;
         }
 
-        public void AddPlayerToIgnoredPlayers(string name)
+        public void AddPlayerToIgnoredPlayers(string id, string name)
         {
             this.CheckInitialized();
-            if (string.IsNullOrEmpty(name) || this.configuration.IgnoredPlayerNames.Contains(name)) return;
-            this.configuration.IgnoredPlayerNames.Add(name);
+            if (this.configuration.IgnoredPlayers.ContainsKey(name)) return;
+            this.configuration.IgnoredPlayers.Add(name, id);
             this.configuration.Save();
         }
 
-        public void RemovePlayerFromIgnoredPlayers(string name)
+        public void RemovePlayerFromIgnoredPlayers(string id)
         {
             this.CheckInitialized();
-            if (string.IsNullOrEmpty(name) || !this.configuration.IgnoredPlayerNames.Contains(name)) return;
-            this.configuration.IgnoredPlayerNames.Remove(name);
-            this.configuration.Save();
+            try
+            {
+                var ignoredPlayerKey = this.configuration.IgnoredPlayers.FirstOrDefault(player => player.Key.Equals(id)).Key;
+                this.configuration.IgnoredPlayers.Remove(ignoredPlayerKey);
+                this.configuration.Save();
+            }
+            catch (Exception)
+            {
+                PluginLog.LogError("Ignored Player ID not found.");
+            }
         }
 
         public void SetEnabledState(bool state)
