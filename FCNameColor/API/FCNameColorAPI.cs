@@ -28,7 +28,7 @@ namespace FCNameColor
         public IEnumerable<string> GetPlayerFCs()
         {
             this.CheckInitialized();
-            return this.configuration.PlayerFCs.ToList().Select(fc => $"{fc.Value.ID} {fc.Value.Name}");
+            return this.configuration.PlayerFCs.ToList().Select(fc => $"{fc.Key} {fc.Value.ID} {fc.Value.Name}");
         }
 
         public IEnumerable<string> GetFCMembers(string id)
