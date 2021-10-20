@@ -147,11 +147,20 @@ namespace FCNameColor
                     }
 
                     var color = ConvertUIColorToColor(z);
-                    if (ImGui.ColorButton(z.RowId.ToString(), color))
+                    var id = z.RowId.ToString();
+                    if (id == configuration.UiColor)
                     {
-                        configuration.UiColor = z.RowId.ToString();
-                        configuration.Color = color;
-                        configuration.Save();
+                        var something = true;
+                        ImGui.Checkbox("Selected", ref something);
+                    }
+                    else
+                    {
+                        if (ImGui.ColorButton(id, color))
+                        {
+                            configuration.UiColor = id;
+                            configuration.Color = color;
+                            configuration.Save();
+                        }
                     }
                     ImGui.NextColumn();
                 }
