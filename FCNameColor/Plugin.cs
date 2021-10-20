@@ -260,18 +260,23 @@ namespace FCNameColor
                 return;
             }
 
+            if (isInDuty && !config.IncludeDuties) { 
+                return;
+            }
+
             if (!members.Exists(member => member.Name == target.Name.TextValue))
             {
                 return;
             }
 
-            var shouldReplaceName = isInDuty ? (config.IncludeDuties && !isLocalPlayer) : (!config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer);
-            PluginLog.Debug($"Name: {args.Name.TextValue}, shouldReplaceName: {shouldReplaceName}, IsInDuty: {isInDuty}, OnlyColorFCTag: {config.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
-
-            if (isInDuty && !isLocalPlayer) {
+            if (isInDuty && config.IncludeDuties && !isLocalPlayer)
+            {
                 args.Colour = new() { A = (byte)(config.Color.W * 255), R = (byte)(config.Color.X * 255), G = (byte)(config.Color.Y * 255), B = (byte)(config.Color.Z * 255) };
                 return;
             }
+
+            var shouldReplaceName = !config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer;
+            PluginLog.Debug($"Name: {args.Name.TextValue}, shouldReplaceName: {shouldReplaceName}, IsInDuty: {isInDuty}, OnlyColorFCTag: {config.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
 
             if (!isInDuty && !shouldReplaceName)
             {
@@ -281,20 +286,14 @@ namespace FCNameColor
 
             if (shouldReplaceName)
             {
-                var newNameString = BuildSEString(args.Name.TextValue);
-                args.Name = newNameString;
-
-                if (args.Title != null)
-                {
-                    var newTitleString = BuildSEString(args.Title.TextValue);
-                    args.Title = newTitleString;
-                }
-            } else
+                args.Colour = new() { A = (byte)(config.Color.W * 255), R = (byte)(config.Color.X * 255), G = (byte)(config.Color.Y * 255), B = (byte)(config.Color.Z * 255) };
+            }
+            else
             {
                 var newFCString = BuildSEString(args.FreeCompany.TextValue);
                 args.FreeCompany = newFCString;
             }
-            PluginLog.Debug($"Overriding player nameplate for {args.Name.TextValue} (ActorID {objectID})");
+            PluginLog.Debug($"Overriding player nameplate for {args.Name.TextValue} (ObjectID {objectID})");
         }
 
 
