@@ -148,19 +148,27 @@ namespace FCNameColor
 
                     var color = ConvertUIColorToColor(z);
                     var id = z.RowId.ToString();
+                    var oldCursor = ImGui.GetCursorPos();
+                    
+                    if (ImGui.ColorButton(id, color))
+                    {
+                        configuration.UiColor = id;
+                        configuration.Color = color;
+                        configuration.Save();
+                    }
+
                     if (id == configuration.UiColor)
                     {
-                        var something = true;
-                        ImGui.Checkbox("Selected", ref something);
-                    }
-                    else
-                    {
-                        if (ImGui.ColorButton(id, color))
-                        {
-                            configuration.UiColor = id;
-                            configuration.Color = color;
-                            configuration.Save();
-                        }
+                        // For the selected colour, render a transparent checkmark on top
+                        var newCursor = ImGui.GetCursorPos();
+                        ImGui.SetCursorPos(oldCursor);
+                        ImGui.PushStyleColor(ImGuiCol.FrameBgActive, Vector4.Zero);
+                        ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, Vector4.Zero);
+                        ImGui.PushStyleColor(ImGuiCol.FrameBg, Vector4.Zero);
+                        var selected = true;
+                        ImGui.Checkbox("Selected", ref selected);
+                        ImGui.PopStyleColor(3);
+                        ImGui.SetCursorPos(newCursor);
                     }
                     ImGui.NextColumn();
                 }
