@@ -15,7 +15,6 @@ namespace FCNameColor
         private const string LabelProviderGetIgnoredPlayers = "FCNameColor.GetIgnoredPlayers";
         private const string LabelProviderAddPlayerToIgnoredPlayers = "FCNameColor.AddPlayerToIgnoredPlayers";
         private const string LabelProviderRemovePlayerFromIgnoredPlayers = "FCNameColor.RemovePlayerFromIgnoredPlayers";
-        private const string LabelProviderSetEnabledState = "FCNameColor.SetEnabledState";
 
         private readonly ICallGateProvider<int> providerAPIVersion;
         private readonly ICallGateProvider<IEnumerable<string>> providerGetLocalPlayers;
@@ -24,7 +23,6 @@ namespace FCNameColor
         private readonly ICallGateProvider<IEnumerable<string>> providerGetIgnoredPlayers;
         private readonly ICallGateProvider<string, string, object> providerAddPlayerToIgnoredPlayers;
         private readonly ICallGateProvider<string, object> providerRemovePlayerFromIgnoredPlayers;
-        private readonly ICallGateProvider<bool, object> providerSetEnabledState;
 
         public FCNameColorProvider(DalamudPluginInterface pluginInterface, IFCNameColorAPI api)
         {
@@ -56,10 +54,6 @@ namespace FCNameColor
                 this.providerRemovePlayerFromIgnoredPlayers =
                     pluginInterface.GetIpcProvider<string, object>(LabelProviderRemovePlayerFromIgnoredPlayers);
                 this.providerRemovePlayerFromIgnoredPlayers.RegisterAction(api.RemovePlayerFromIgnoredPlayers);
-                
-                this.providerSetEnabledState =
-                    pluginInterface.GetIpcProvider<bool, object>(LabelProviderSetEnabledState);
-                this.providerSetEnabledState.RegisterAction(api.SetEnabledState);
             }
             catch (Exception ex)
             {
@@ -76,7 +70,6 @@ namespace FCNameColor
             this.providerGetIgnoredPlayers?.UnregisterFunc();
             this.providerAddPlayerToIgnoredPlayers?.UnregisterAction();
             this.providerRemovePlayerFromIgnoredPlayers?.UnregisterAction();
-            this.providerSetEnabledState?.UnregisterAction();
         }
     }
 }

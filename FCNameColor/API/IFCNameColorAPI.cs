@@ -49,11 +49,5 @@ namespace FCNameColor
         /// </summary>
         /// <param name="id">player lodestone id.</param>
         public void RemovePlayerFromIgnoredPlayers(string id);
-
-        /// <summary>
-        /// Update enabled state.
-        /// </summary>
-        /// <param name="state">new enabled state of nameplate updates.</param>
-        public void SetEnabledState(bool state);
     }
 }

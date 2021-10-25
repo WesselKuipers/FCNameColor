@@ -78,13 +78,6 @@ namespace FCNameColor
             }
         }
 
-        public void SetEnabledState(bool state)
-        {
-            this.CheckInitialized();
-            this.configuration.Enabled = state;
-            this.configuration.Save();
-        }
-        
         private void CheckInitialized()
         {
             if (!this.initialized)

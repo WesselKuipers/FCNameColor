@@ -1,72 +1,72 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <ProjectGuid>{13C812E9-0D42-4B95-8646-40EEBF30636F}</ProjectGuid>
-    <TargetFramework>net5.0-windows7.0</TargetFramework>
-    <LangVersion>9.0</LangVersion>
-    <AssemblyTitle>FCNameColor</AssemblyTitle>
-    <Product>FCNameColor</Product>
-    <Copyright>Copyright ©  2021</Copyright>
-    <AssemblyVersion>2.0.1.0</AssemblyVersion>
-    <FileVersion>2.0.1.0</FileVersion>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <OutputPath>bin\$(Configuration)\</OutputPath>
-    <PreserveCompilationContext>false</PreserveCompilationContext>
-    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugType>full</DebugType>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="DalamudPackager" Version="2.1.4" />
-    <PackageReference Include="XivCommon" Version="3.1.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="Dalamud">
-      <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\Dalamud.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="FFXIVClientStructs">
-      <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\FFXIVClientStructs.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="ImGui.NET">
-      <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\ImGui.NET.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="ImGuiScene">
-      <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\ImGuiScene.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Lumina">
-      <HintPath>$(APPDATA)\XIVLauncher\addon\Hooks\dev\Lumina.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Lumina.Excel">
-      <HintPath>$(APPDATA)\XIVLauncher\addon\Hooks\dev\Lumina.Excel.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>$(APPDATA)\XIVLauncher\addon\Hooks\dev\Newtonsoft.Json.dll</HintPath>
-      <Private>False</Private>
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="FCNameColor.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <Content Include="..\images\icon.png" Link="images\icon.png" CopyToOutputDirectory="Always" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\NetStone\NetStone\NetStone.csproj" />
-  </ItemGroup>
-	<Target Name="CopyToDevPlugins" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-		<Exec Command="if not exist $(AppData)\XIVLauncher\devPlugins\$(TargetName) (mkdir $(AppData)\XIVLauncher\devPlugins\$(TargetName))" />
-		<Exec Command="copy $(TargetDir)*.dll $(AppData)\XIVLauncher\devPlugins\$(TargetName)" />
-		<Exec Command="copy $(TargetDir)*.pdb $(AppData)\XIVLauncher\devPlugins\$(TargetName)" />
-	</Target>
+    <PropertyGroup>
+        <ProjectGuid>{13C812E9-0D42-4B95-8646-40EEBF30636F}</ProjectGuid>
+        <TargetFramework>net5.0-windows7.0</TargetFramework>
+        <LangVersion>9.0</LangVersion>
+        <AssemblyTitle>FCNameColor</AssemblyTitle>
+        <Product>FCNameColor</Product>
+        <Copyright>Copyright © 2021</Copyright>
+        <AssemblyVersion>2.0.1.0</AssemblyVersion>
+        <FileVersion>2.0.1.0</FileVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <OutputPath>bin\$(Configuration)\</OutputPath>
+        <PreserveCompilationContext>false</PreserveCompilationContext>
+        <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+        <DebugType>full</DebugType>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+        <DebugType>pdbonly</DebugType>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="DalamudPackager" Version="2.1.4"/>
+        <PackageReference Include="XivCommon" Version="3.1.0"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Reference Include="Dalamud">
+            <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\Dalamud.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="FFXIVClientStructs">
+            <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\FFXIVClientStructs.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="ImGui.NET">
+            <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\ImGui.NET.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="ImGuiScene">
+            <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\ImGuiScene.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Lumina">
+            <HintPath>$(APPDATA)\XIVLauncher\addon\Hooks\dev\Lumina.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Lumina.Excel">
+            <HintPath>$(APPDATA)\XIVLauncher\addon\Hooks\dev\Lumina.Excel.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+            <HintPath>$(APPDATA)\XIVLauncher\addon\Hooks\dev\Newtonsoft.Json.dll</HintPath>
+            <Private>False</Private>
+            <SpecificVersion>False</SpecificVersion>
+        </Reference>
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="FCNameColor.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <Content Include="..\images\icon.png" Link="images\icon.png" CopyToOutputDirectory="Always"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\NetStone\NetStone\NetStone.csproj"/>
+    </ItemGroup>
+    <Target Name="CopyToDevPlugins" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+        <Exec Command="if not exist $(AppData)\XIVLauncher\devPlugins\$(TargetName) (mkdir $(AppData)\XIVLauncher\devPlugins\$(TargetName))"/>
+        <Exec Command="copy $(TargetDir)*.dll $(AppData)\XIVLauncher\devPlugins\$(TargetName)"/>
+        <Exec Command="copy $(TargetDir)*.pdb $(AppData)\XIVLauncher\devPlugins\$(TargetName)"/>
+    </Target>
 </Project>
