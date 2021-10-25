@@ -55,6 +55,7 @@ namespace FCNameColor
 
         private readonly XivCommonBase XivCommonBase;
         private LodestoneClient lodestoneClient;
+        private FCNameColorProvider fcNameColorProvider;
         private PluginUI UI { get; }
         private bool loggingIn;
         private bool firstTime = false;
@@ -90,6 +91,8 @@ namespace FCNameColor
             {
                 _ = FetchData();
             }
+
+            this.fcNameColorProvider = new FCNameColorProvider(Pi, new FCNameColorAPI(this.config));
         }
 
         private void OnCommand(string command, string args)
@@ -260,11 +263,7 @@ namespace FCNameColor
                 return;
             }
 
-            if (isInDuty && !config.IncludeDuties) { 
-                return;
-            }
-
-            if (!members.Exists(member => member.Name == target.Name.TextValue))
+            if (!members.Exists(member => member.Name == target.Name.TextValue) || this.config.IgnoredPlayers.ContainsKey(target.Name.TextValue))
             {
                 return;
             }
@@ -304,6 +303,8 @@ namespace FCNameColor
                 if (disposing)
                 {
                     UI.Dispose();
+                    
+                    this.fcNameColorProvider.Dispose();
 
                     Commands.RemoveHandler(commandName);
                     Framework.Update -= OnFrameworkUpdate;

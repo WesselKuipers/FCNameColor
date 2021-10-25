@@ -29,6 +29,8 @@ namespace FCNameColor
         /// </summary>
         public Dictionary<string, FC> PlayerFCs { get; set; } = new Dictionary<string, FC>();
 
+        public Dictionary<string, string> IgnoredPlayers { get; set; } = new Dictionary<string, string>();
+
         [NonSerialized]
         private DalamudPluginInterface pluginInterface;
 
