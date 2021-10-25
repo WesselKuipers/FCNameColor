@@ -5,6 +5,9 @@ using Lumina.Excel.GeneratedSheets;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Data;
+using Dalamud.Interface;
+using Dalamud.Logging;
+using Lumina;
 
 namespace FCNameColor
 {
@@ -20,8 +23,6 @@ namespace FCNameColor
         }
     }
 
-    // It is good to have this be disposable in general, in case you ever need it
-    // to do any cleanup
     class PluginUI : IDisposable
     {
         private readonly Configuration configuration;
@@ -35,9 +36,13 @@ namespace FCNameColor
             set { visible = value; }
         }
 
+        private bool showIgnoreList;
+        private FCMember currentIgnoredPlayer;
+
         public PluginUI(Configuration config, DataManager data)
         {
             configuration = config;
+
             var list = new List<UIColor>(data.GetExcelSheet<UIColor>().Distinct(new UIColorComparer()));
             list.Sort((a, b) =>
             {
@@ -74,7 +79,7 @@ namespace FCNameColor
                 return;
             }
 
-            ImGui.SetNextWindowSize(new Vector2(375, 440), ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSize(new Vector2(375, 500), ImGuiCond.FirstUseEver);
             ImGui.SetNextWindowSizeConstraints(new Vector2(375, 470), new Vector2(375, float.MaxValue));
             if (ImGui.Begin("FC Name Color Config", ref visible, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
@@ -95,7 +100,6 @@ namespace FCNameColor
                     ImGui.Text(" Fetching FC members from Lodestone...");
                 }
 
-                // can't ref a property, so use a local copy
                 var onlyColorFCTag = configuration.OnlyColorFCTag;
                 if (ImGui.Checkbox("Only color the FC tag", ref onlyColorFCTag))
                 {
@@ -149,15 +153,95 @@ namespace FCNameColor
                     }
 
                     var color = ConvertUIColorToColor(z);
-                    if (ImGui.ColorButton(z.RowId.ToString(), color))
+                    var id = z.RowId.ToString();
+                    var oldCursor = ImGui.GetCursorPos();
+                    
+                    if (ImGui.ColorButton(id, color))
                     {
-                        configuration.UiColor = z.RowId.ToString();
+                        configuration.UiColor = id;
                         configuration.Color = color;
                         configuration.Save();
+                    }
+
+                    if (id == configuration.UiColor)
+                    {
+                        // For the selected colour, render a transparent checkmark on top
+                        var newCursor = ImGui.GetCursorPos();
+                        ImGui.SetCursorPos(oldCursor);
+                        ImGui.PushStyleColor(ImGuiCol.FrameBgActive, Vector4.Zero);
+                        ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, Vector4.Zero);
+                        ImGui.PushStyleColor(ImGuiCol.FrameBg, Vector4.Zero);
+                        var selected = true;
+                        ImGui.Checkbox("Selected", ref selected);
+                        ImGui.PopStyleColor(3);
+                        ImGui.SetCursorPos(newCursor);
                     }
                     ImGui.NextColumn();
                 }
                 ImGui.Columns(1);
+            }
+            
+            ImGui.Separator();
+            ImGui.Spacing();
+            if (ImGui.SmallButton("Ignore List"))
+            {
+                this.showIgnoreList = !this.showIgnoreList;
+            }
+
+            if (this.showIgnoreList)
+            {
+                ImGui.SetNextWindowSize(new Vector2(270, 200), ImGuiCond.FirstUseEver);
+                ImGui.Begin("FC Name Color Config - Ignore List");
+                ImGui.TextWrapped("Don't update nameplates for these players.");
+                ImGui.Spacing();
+                ImGui.SetNextItemWidth(150f * ImGuiHelpers.GlobalScale);
+                var fcMembers = this.GetFCMembers();
+                var playerNames = fcMembers.Select(member => member.Name).ToArray();
+                var playerIndex = Array.IndexOf(playerNames, this.currentIgnoredPlayer.Name);
+                ImGui.SetNextItemWidth(170f * ImGuiHelpers.GlobalScale);
+                if (ImGui.Combo(
+                    "###AddPlayerToIgnoreList",
+                    ref playerIndex,
+                    playerNames,
+                    playerNames.Length))
+                {
+                    this.currentIgnoredPlayer = fcMembers[playerIndex];
+                }
+                ImGui.SameLine();
+                if (ImGui.SmallButton("Add Player"))
+                {
+                    if (this.configuration.IgnoredPlayers.ContainsKey(this.currentIgnoredPlayer.Name))
+                    {
+                        ImGui.OpenPopup("###AddPlayerToIgnoreListDupe");
+                    }
+                    else
+                    {
+                        this.configuration.IgnoredPlayers.Add(this.currentIgnoredPlayer.Name, this.currentIgnoredPlayer.ID);
+                        this.configuration.Save();
+                    }
+                }
+
+                if (ImGui.BeginPopup("###AddPlayerToIgnoreListDupe"))
+                {
+                    ImGui.Text("You've already added this player!");
+                    ImGui.EndPopup();
+                }
+                
+                foreach (var (key, _) in this.configuration.IgnoredPlayers.ToList())
+                {
+                    ImGui.Spacing();
+                    ImGui.Text(key);
+                    ImGui.SameLine();
+                    ImGui.BeginGroup();
+                    ImGui.PushFont(UiBuilder.IconFont);
+                    ImGui.Text(FontAwesomeIcon.Times.ToIconString());
+                    ImGui.PopFont();
+                    ImGui.EndGroup();
+                    if (!ImGui.IsItemClicked(ImGuiMouseButton.Left)) continue;
+                    this.configuration.IgnoredPlayers.Remove(key);
+                    this.configuration.Save();
+                }
+                ImGui.End();
             }
             ImGui.End();
         }
@@ -169,6 +253,20 @@ namespace FCNameColor
                 (float)temp[2] / 255,
                 (float)temp[1] / 255,
                 (float)temp[0] / 255);
+        }
+
+        private List<FCMember> GetFCMembers()
+        {
+            var fcMembers = new List<FCMember>();
+            var playersFCs = this.configuration.PlayerFCs;
+            foreach (var playerFC in playersFCs)
+            {
+                fcMembers.AddRange(playerFC.Value.Members);
+            }
+
+            fcMembers = fcMembers.Distinct().OrderBy(member => member.Name).ToList();
+
+            return fcMembers;
         }
     }
 }
