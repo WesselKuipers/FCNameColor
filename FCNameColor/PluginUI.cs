@@ -80,7 +80,7 @@ namespace FCNameColor
             }
 
             ImGui.SetNextWindowSize(new Vector2(375, 500), ImGuiCond.FirstUseEver);
-            ImGui.SetNextWindowSizeConstraints(new Vector2(375, 470), new Vector2(375, float.MaxValue));
+            ImGui.SetNextWindowSizeConstraints(new Vector2(375, 500), new Vector2(375, float.MaxValue));
             if (ImGui.Begin("FC Name Color Config", ref visible, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
                 var enabled = configuration.Enabled;
@@ -89,6 +89,7 @@ namespace FCNameColor
                     configuration.Enabled = enabled;
                     configuration.Save();
                 }
+
                 if (ImGui.IsItemHovered())
                 {
                     ImGui.SetTooltip("Changes may take a couple of seconds to apply.");
@@ -124,9 +125,10 @@ namespace FCNameColor
                     configuration.IncludeDuties = includeDuties;
                     configuration.Save();
                 }
+
                 if (ImGui.IsItemHovered())
                 {
-                    ImGui.SetTooltip("Will color the entire names of FC members when inside a duty.");
+                    ImGui.SetTooltip("Will colour the entire names of FC members when inside a duty.");
                 }
 
                 var glow = configuration.Glow;
@@ -180,7 +182,7 @@ namespace FCNameColor
                 }
                 ImGui.Columns(1);
             }
-            
+
             ImGui.Separator();
             ImGui.Spacing();
             if (ImGui.SmallButton("Ignore List"))
@@ -191,7 +193,7 @@ namespace FCNameColor
             if (this.showIgnoreList)
             {
                 ImGui.SetNextWindowSize(new Vector2(270, 200), ImGuiCond.FirstUseEver);
-                ImGui.Begin("FC Name Color Config - Ignore List");
+                ImGui.Begin("FC Name Color Config - Ignore List", ref showIgnoreList);
                 ImGui.TextWrapped("Don't update nameplates for these players.");
                 ImGui.Spacing();
                 ImGui.SetNextItemWidth(150f * ImGuiHelpers.GlobalScale);
