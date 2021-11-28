@@ -6,16 +6,15 @@ using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Data;
 using Dalamud.Interface;
-using Dalamud.Logging;
-using Lumina;
+using Dalamud.Interface.Style;
 
 namespace FCNameColor
 {
-    class UIColorComparer : IEqualityComparer<UIColor>
+    internal class UIColorComparer : IEqualityComparer<UIColor>
     {
         public bool Equals(UIColor x, UIColor y)
         {
-            return x.UIForeground == y.UIForeground; // based on variable i
+            return x?.UIForeground == y?.UIForeground; // based on variable i
         }
         public int GetHashCode(UIColor obj)
         {
@@ -23,33 +22,35 @@ namespace FCNameColor
         }
     }
 
-    class PluginUI : IDisposable
+    internal class PluginUI : IDisposable
     {
+        private readonly Plugin plugin;
         private readonly Configuration configuration;
         private readonly List<UIColor> uiColors;
 
         // this extra bool exists for ImGui, since you can't ref a property
-        private bool visible = false;
+        private bool visible;
         public bool Visible
         {
-            get { return visible; }
-            set { visible = value; }
+            get => visible;
+            set => visible = value;
         }
 
         private bool showIgnoreList;
         private FCMember currentIgnoredPlayer;
 
-        public PluginUI(Configuration config, DataManager data)
+        public PluginUI(Configuration config, DataManager data, Plugin plugin)
         {
             configuration = config;
+            this.plugin = plugin;
 
-            var list = new List<UIColor>(data.GetExcelSheet<UIColor>().Distinct(new UIColorComparer()));
+            var list = new List<UIColor>(data.GetExcelSheet<UIColor>()!.Distinct(new UIColorComparer()));
             list.Sort((a, b) =>
             {
                 var colorA = ConvertUIColorToColor(a);
                 var colorB = ConvertUIColorToColor(b);
-                ImGui.ColorConvertRGBtoHSV(colorA.X, colorA.Y, colorA.Z, out float aH, out float aS, out float aV);
-                ImGui.ColorConvertRGBtoHSV(colorB.X, colorB.Y, colorB.Z, out float bH, out float bS, out float bV);
+                ImGui.ColorConvertRGBtoHSV(colorA.X, colorA.Y, colorA.Z, out var aH, out var aS, out var aV);
+                ImGui.ColorConvertRGBtoHSV(colorB.X, colorB.Y, colorB.Z, out var bH, out var bS, out var bV);
 
                 var hue = aH.CompareTo(bH);
                 if (hue != 0) { return hue; }
@@ -58,9 +59,7 @@ namespace FCNameColor
                 if (saturation != 0) { return saturation; }
 
                 var value = aV.CompareTo(bV);
-                if (value != 0) { return value; }
-
-                return 0;
+                return value != 0 ? value : 0;
             });
             uiColors = list;
         }
@@ -72,7 +71,7 @@ namespace FCNameColor
             DrawMainWindow();
         }
 
-        public void DrawMainWindow()
+        private void DrawMainWindow()
         {
             if (!Visible)
             {
@@ -95,10 +94,18 @@ namespace FCNameColor
                     ImGui.SetTooltip("Changes may take a couple of seconds to apply.");
                 }
 
-                if (Plugin.Loading)
+                if (plugin.NotInFC)
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(new Vector4(1, 0, 0, 1),"Couldn’t find FC");
+                } else if (plugin.Loading && !plugin.Error)
                 {
                     ImGui.SameLine();
                     ImGui.Text(" Fetching FC members from Lodestone...");
+                } else if (plugin.Error)
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(new Vector4(1, 0, 0, 1),$"Error when fetching. Retrying in {plugin.Cooldown} seconds.");
                 }
 
                 var onlyColorFCTag = configuration.OnlyColorFCTag;
@@ -185,16 +192,47 @@ namespace FCNameColor
 
             ImGui.Separator();
             ImGui.Spacing();
-            if (ImGui.SmallButton("Ignore List"))
+            if (ImGui.Button("Ignore List"))
             {
                 this.showIgnoreList = !this.showIgnoreList;
             }
+            
+            ImGui.SameLine();
+            var cooldown = plugin.Cooldown > 0;
+            if (cooldown)
+            {
+                var style = ImGui.GetStyle().Colors[(int) ImGuiCol.Button];
+                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, ImGui.GetStyle().Alpha * 0.5f);
+                ImGui.PushStyleColor(ImGuiCol.ButtonActive, style);
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, style);
+            }
+            if (ImGui.Button(plugin.Cooldown == 0 ? "Clear & Retry" : $"Clear & Retry ({plugin.Cooldown})") && !cooldown)
+            {
+                configuration.PlayerFCs = new Dictionary<string, FC>();
+                configuration.PlayerIDs = new Dictionary<string, string>();
+                configuration.Save();
+                plugin.Reload();
+            }
+            if (cooldown)
+            {
+                ImGui.PopStyleVar();
+                ImGui.PopStyleColor(2);
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip($@"Pressing this will clear the list of FC members and attempt to fetch all the necessary data from Lodestone.
+This can be especially useful if something went wrong when loading from Lodestone, or if you’ve joined a different FC.
+
+If something goes wrong trying to fetch the data, you can try again after {(plugin.Cooldown > 0 ? plugin.Cooldown : Plugin.CooldownTime)} seconds.");
+            }
+
+
 
             if (this.showIgnoreList)
             {
                 ImGui.SetNextWindowSize(new Vector2(270, 200), ImGuiCond.FirstUseEver);
                 ImGui.Begin("FC Name Color Config - Ignore List", ref showIgnoreList);
-                ImGui.TextWrapped("Don't update nameplates for these players.");
+                ImGui.TextWrapped("Don’t update nameplates for these players.");
                 ImGui.Spacing();
                 ImGui.SetNextItemWidth(150f * ImGuiHelpers.GlobalScale);
                 var fcMembers = this.GetFCMembers();
@@ -225,7 +263,7 @@ namespace FCNameColor
 
                 if (ImGui.BeginPopup("###AddPlayerToIgnoreListDupe"))
                 {
-                    ImGui.Text("You've already added this player!");
+                    ImGui.Text("You’ve already added this player!");
                     ImGui.EndPopup();
                 }
                 
