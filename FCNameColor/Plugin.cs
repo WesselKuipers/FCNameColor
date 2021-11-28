@@ -190,25 +190,16 @@ namespace FCNameColor
                 config.PlayerIDs[playerCacheName] = playerId;
             }
 
-            var fcFetched = config.PlayerFCs.TryGetValue(playerId, out var fc);
-            if (!fcFetched)
+            PluginLog.Debug("Fetching FC ID via character page");
+            var player = await lodestoneClient.GetCharacter(playerId);
+            if (player.FreeCompany == null)
             {
-                PluginLog.Debug("Fetching FC ID via character page");
-                var player = await lodestoneClient.GetCharacter(playerId);
-                if (player.FreeCompany == null)
-                {
-                    PluginLog.Debug("Player is not in an FC.");
-                    NotInFC = true;
-                    return;
-                }
+                PluginLog.Debug("Player is not in an FC.");
+                NotInFC = true;
+                return;
+            }
 
-                fc = new FC {ID = player.FreeCompany.Id, Name = player.FreeCompany.Name};
-            }
-            else
-            {
-                PluginLog.Debug($"Loading {fc.Members.Length} cached FC members");
-                members = fc.Members.ToList();
-            }
+            var fc = new FC {ID = player.FreeCompany.Id, Name = player.FreeCompany.Name};
 
             // Fetch the first page of FC members.
             // This will also contain the amount of additional pages of members that may have to be retrieved.
