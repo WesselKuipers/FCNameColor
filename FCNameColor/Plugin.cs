@@ -190,6 +190,13 @@ namespace FCNameColor
                 config.PlayerIDs[playerCacheName] = playerId;
             }
 
+            var fcFetched = config.PlayerFCs.TryGetValue(playerId, out var cachedFC);
+            if (fcFetched)
+            {
+                PluginLog.Debug($"Loading {cachedFC.Members.Length} cached FC members");
+                members = cachedFC.Members.ToList();
+            }
+
             PluginLog.Debug("Fetching FC ID via character page");
             var player = await lodestoneClient.GetCharacter(playerId);
             if (player.FreeCompany == null)
