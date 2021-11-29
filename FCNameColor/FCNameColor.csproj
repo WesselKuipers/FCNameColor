@@ -6,8 +6,8 @@
         <AssemblyTitle>FCNameColor</AssemblyTitle>
         <Product>FCNameColor</Product>
         <Copyright>Copyright © 2021</Copyright>
-        <AssemblyVersion>2.0.2.0</AssemblyVersion>
-        <FileVersion>2.0.2.0</FileVersion>
+        <AssemblyVersion>2.0.2.1</AssemblyVersion>
+        <FileVersion>2.0.2.1</FileVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <OutputPath>bin\$(Configuration)\</OutputPath>
         <PreserveCompilationContext>false</PreserveCompilationContext>
@@ -21,8 +21,8 @@
         <DebugType>pdbonly</DebugType>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.1.4"/>
-        <PackageReference Include="XivCommon" Version="3.1.0"/>
+        <PackageReference Include="DalamudPackager" Version="2.1.4" />
+        <PackageReference Include="XivCommon" Version="3.1.0" />
     </ItemGroup>
     <ItemGroup>
         <Reference Include="Dalamud">
@@ -59,14 +59,14 @@
         <None Include="FCNameColor.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <Content Include="..\images\icon.png" Link="images\icon.png" CopyToOutputDirectory="Always"/>
+        <Content Include="..\images\icon.png" Link="images\icon.png" CopyToOutputDirectory="Always" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\NetStone\NetStone\NetStone.csproj"/>
+        <ProjectReference Include="..\NetStone\NetStone\NetStone.csproj" />
     </ItemGroup>
     <Target Name="CopyToDevPlugins" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-        <Exec Command="if not exist $(AppData)\XIVLauncher\devPlugins\$(TargetName) (mkdir $(AppData)\XIVLauncher\devPlugins\$(TargetName))"/>
-        <Exec Command="copy $(TargetDir)*.dll $(AppData)\XIVLauncher\devPlugins\$(TargetName)"/>
-        <Exec Command="copy $(TargetDir)*.pdb $(AppData)\XIVLauncher\devPlugins\$(TargetName)"/>
+        <Exec Command="if not exist $(AppData)\XIVLauncher\devPlugins\$(TargetName) (mkdir $(AppData)\XIVLauncher\devPlugins\$(TargetName))" />
+        <Exec Command="copy $(TargetDir)*.dll $(AppData)\XIVLauncher\devPlugins\$(TargetName)" />
+        <Exec Command="copy $(TargetDir)*.pdb $(AppData)\XIVLauncher\devPlugins\$(TargetName)" />
     </Target>
 </Project>
