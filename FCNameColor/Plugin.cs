@@ -214,8 +214,8 @@ namespace FCNameColor
             try
             {
                 var fcMemberResult = await lodestoneClient.GetFreeCompanyMembers(fc.ID);
-                members = new List<FCMember>();
-                members.AddRange(fcMemberResult.Members.Select(res => new FCMember {ID = res.Id, Name = res.Name}));
+                var newMembers = new List<FCMember>();
+                newMembers.AddRange(fcMemberResult.Members.Select(res => new FCMember {ID = res.Id, Name = res.Name}));
 
                 // Fire off async requests for fetching members for each remaining page
                 if (fcMemberResult.NumPages > 1)
@@ -229,11 +229,12 @@ namespace FCNameColor
 
                     await Task.WhenAll(taskList);
                     taskList.ForEach(task =>
-                        members.AddRange(
+                        newMembers.AddRange(
                             task.Result.Members.Select(res => new FCMember() {ID = res.Id, Name = res.Name})));
                 }
 
-                fc.Members = members.ToArray();
+                fc.Members = newMembers.ToArray();
+                members = newMembers;
                 config.PlayerFCs[playerId] = fc;
                 config.Save();
                 Loading = false;
