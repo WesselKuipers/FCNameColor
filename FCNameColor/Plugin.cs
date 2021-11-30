@@ -54,6 +54,10 @@ namespace FCNameColor
         public int Cooldown = 0;
         public bool NotInFC;
         public bool Error;
+        private string playerName;
+        private string worldName;
+        private uint worldId;
+        private bool initialized;
 
         public Plugin(DataManager dataManager)
         {
@@ -89,8 +93,6 @@ namespace FCNameColor
             Pi.UiBuilder.Draw += DrawUI;
             Pi.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            _ = FetchData();
-
             this.fcNameColorProvider = new FCNameColorProvider(Pi, new FCNameColorAPI(this.config));
         }
 
@@ -108,17 +110,30 @@ namespace FCNameColor
         {
             // LocalPlayer is still null at this point, so we just set a flag that indicates we're logging in.
             loggingIn = true;
+            initialized = false;
             members = null;
         }
 
         private void OnFrameworkUpdate(Framework framework)
         {
-            if (!loggingIn || ClientState.LocalPlayer == null) return;
-            loggingIn = false;
+            if (ClientState.LocalPlayer == null)
+            {
+                return;
+            }
 
-            if (string.IsNullOrEmpty(ClientState.LocalPlayer.CompanyTag.TextValue)) return;
+            var lp = ClientState.LocalPlayer;
+            playerName = lp.Name.TextValue;
+            worldName = lp.HomeWorld.GameData.Name;
+            worldId = lp.HomeWorld.Id;
+
+            if (!loggingIn && initialized)
+            {
+                return;
+            }
+
+            loggingIn = false;
             PluginLog.Debug(
-                $"Logged in as {ClientState.LocalPlayer.Name} @ {ClientState.LocalPlayer.HomeWorld.GameData.Name}.");
+                $"Logged in as {playerName} @ {worldName}.");
             _ = FetchData();
         }
 
@@ -153,6 +168,12 @@ namespace FCNameColor
 
         private async Task FetchData()
         {
+            if (string.IsNullOrEmpty(playerName))
+            {
+                return;
+            }
+
+            initialized = true;
             Loading = true;
             Cooldown = CooldownTime;
             timer.Start();
@@ -166,7 +187,8 @@ namespace FCNameColor
 
             lodestoneClient ??= await LodestoneClient.GetClientAsync();
 
-            var playerCacheName = $"{ClientState.LocalPlayer?.Name}@{ClientState.LocalPlayer?.HomeWorld.GameData.Name}";
+            var playerCacheName = $"{playerName}@{worldName}";
+            PluginLog.Debug($"Fetching data for {playerCacheName}");
             config.PlayerIDs.TryGetValue(playerCacheName, out var playerId);
 
             if (string.IsNullOrEmpty(playerId))
@@ -175,11 +197,11 @@ namespace FCNameColor
                 var playerSearch = await lodestoneClient.SearchCharacter(
                     new NetStone.Search.Character.CharacterSearchQuery()
                     {
-                        World = ClientState.LocalPlayer.HomeWorld.GameData.Name,
-                        CharacterName = ClientState.LocalPlayer.Name.TextValue
+                        World = worldName,
+                        CharacterName = playerName
                     });
                 playerId = playerSearch.Results
-                    .FirstOrDefault(entry => entry.Name == ClientState.LocalPlayer.Name.TextValue)?.Id;
+                    .FirstOrDefault(entry => entry.Name == playerName)?.Id;
                 if (string.IsNullOrEmpty(playerId))
                 {
                     PluginLog.Error("Could not find player on Lodestone");
@@ -279,9 +301,14 @@ namespace FCNameColor
             var objectID = args.ObjectId;
             var target = (PlayerCharacter) Objects.SearchById(objectID);
 
-            var isLocalPlayer = ClientState.LocalPlayer.ObjectId == objectID;
+            var isLocalPlayer = ClientState?.LocalPlayer?.ObjectId == objectID;
             var isPartyMember = GroupManager.Instance()->IsObjectIDInAlliance(objectID);
             var isInDuty = Condition[ConditionFlag.BoundByDuty56];
+
+            if (target is null)
+            {
+                return;
+            }
 
             if (isInDuty && isLocalPlayer)
             {
@@ -299,7 +326,7 @@ namespace FCNameColor
                 return;
             }
 
-            if (target.HomeWorld.Id != ClientState.LocalPlayer.HomeWorld.Id)
+            if (target.HomeWorld.Id != worldId)
             {
                 return;
             }
@@ -333,7 +360,7 @@ namespace FCNameColor
 
             if (shouldReplaceName)
             {
-                args.Colour = new()
+                args.Colour = new RgbaColour
                 {
                     A = (byte) (config.Color.W * 255), R = (byte) (config.Color.X * 255),
                     G = (byte) (config.Color.Y * 255), B = (byte) (config.Color.Z * 255)
@@ -353,20 +380,18 @@ namespace FCNameColor
         {
             try
             {
-                if (disposing)
-                {
-                    UI.Dispose();
+                if (!disposing) return;
+                UI.Dispose();
 
-                    this.fcNameColorProvider.Dispose();
+                this.fcNameColorProvider.Dispose();
 
-                    Commands.RemoveHandler(CommandName);
-                    Framework.Update -= OnFrameworkUpdate;
-                    ClientState.Login -= OnLogin;
-                    Pi.Dispose();
+                Commands.RemoveHandler(CommandName);
+                Framework.Update -= OnFrameworkUpdate;
+                ClientState.Login -= OnLogin;
+                Pi.Dispose();
 
-                    xivCommonBase.Functions.NamePlates.OnUpdate -= NamePlates_OnUpdate;
-                    xivCommonBase.Dispose();
-                }
+                xivCommonBase.Functions.NamePlates.OnUpdate -= NamePlates_OnUpdate;
+                xivCommonBase.Dispose();
             }
             catch (Exception ex)
             {
