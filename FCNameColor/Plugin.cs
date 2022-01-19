@@ -198,7 +198,7 @@ namespace FCNameColor
                     new NetStone.Search.Character.CharacterSearchQuery()
                     {
                         World = worldName,
-                        CharacterName = playerName
+                        CharacterName = $"\"{playerName}\""
                     });
                 playerId = playerSearch.Results
                     .FirstOrDefault(entry => entry.Name == playerName)?.Id;

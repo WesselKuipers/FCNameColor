@@ -6,8 +6,8 @@
         <AssemblyTitle>FCNameColor</AssemblyTitle>
         <Product>FCNameColor</Product>
         <Copyright>Copyright © 2021</Copyright>
-        <AssemblyVersion>2.0.2.3</AssemblyVersion>
-        <FileVersion>2.0.2.3</FileVersion>
+        <AssemblyVersion>2.0.2.4</AssemblyVersion>
+        <FileVersion>2.0.2.4</FileVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <OutputPath>bin\$(Configuration)\</OutputPath>
         <PreserveCompilationContext>false</PreserveCompilationContext>
