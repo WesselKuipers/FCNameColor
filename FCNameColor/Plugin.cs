@@ -59,7 +59,7 @@ namespace FCNameColor
         private uint worldId;
         private bool initialized;
 
-        public Plugin(DataManager dataManager)
+        public Plugin(DataManager dataManager, GameGui g)
         {
             config = Pi.GetPluginConfig() as Configuration;
             timer.Elapsed += delegate
