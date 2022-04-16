@@ -388,7 +388,6 @@ namespace FCNameColor
                 Commands.RemoveHandler(CommandName);
                 Framework.Update -= OnFrameworkUpdate;
                 ClientState.Login -= OnLogin;
-                Pi.Dispose();
 
                 xivCommonBase.Functions.NamePlates.OnUpdate -= NamePlates_OnUpdate;
                 xivCommonBase.Dispose();
