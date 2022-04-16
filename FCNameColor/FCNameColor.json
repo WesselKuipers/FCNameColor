@@ -10,5 +10,5 @@
   "IconUrl": "https://github.com/WesselKuipers/FCNameColor/raw/main/images/icon.png",
   "ApplicableVersion": "any",
   "Tags": [ "nameplate", "FC", "name", "colors" ],
-  "DalamudApiLevel": 5
+  "DalamudApiLevel": 6
 }
