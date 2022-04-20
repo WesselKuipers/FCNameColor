@@ -5,7 +5,9 @@ using Lumina.Excel.GeneratedSheets;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Data;
+using Dalamud.Game.ClientState;
 using Dalamud.Interface;
+using Dalamud.Interface.Colors;
 using Dalamud.Interface.Style;
 
 namespace FCNameColor
@@ -38,10 +40,12 @@ namespace FCNameColor
 
         private bool showIgnoreList;
         private FCMember currentIgnoredPlayer;
+        private readonly ClientState clientState;
 
-        public PluginUI(Configuration config, DataManager data, Plugin plugin)
+        public PluginUI(Configuration config, DataManager data, Plugin plugin, ClientState clientState)
         {
             configuration = config;
+            this.clientState = clientState;
             this.plugin = plugin;
 
             var list = new List<UIColor>(data.GetExcelSheet<UIColor>()!.Distinct(new UIColorComparer()));
@@ -94,10 +98,16 @@ namespace FCNameColor
                     ImGui.SetTooltip("Changes may take a couple of seconds to apply.");
                 }
 
+                if (this.clientState.IsPvP)
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(ImGuiColors.DalamudOrange, "Plugin is disabled during PvP");
+                }
+                
                 if (plugin.NotInFC)
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(1, 0, 0, 1),"Couldn’t find FC");
+                    ImGui.TextColored(ImGuiColors.DalamudRed,"Couldn’t find FC");
                 } else if (plugin.Loading && !plugin.Error)
                 {
                     ImGui.SameLine();
@@ -105,7 +115,7 @@ namespace FCNameColor
                 } else if (plugin.Error)
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(new Vector4(1, 0, 0, 1),$"Error when fetching. Retrying in {plugin.Cooldown} seconds.");
+                    ImGui.TextColored(ImGuiColors.DalamudRed,$"Error when fetching. Retrying in {plugin.Cooldown} seconds.");
                 }
 
                 var onlyColorFCTag = configuration.OnlyColorFCTag;

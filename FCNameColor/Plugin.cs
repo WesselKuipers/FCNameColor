@@ -81,7 +81,7 @@ namespace FCNameColor
             xivCommonBase = new XivCommonBase(Hooks.NamePlates);
             xivCommonBase.Functions.NamePlates.OnUpdate += NamePlates_OnUpdate;
 
-            UI = new PluginUI(config, dataManager, this);
+            UI = new PluginUI(config, dataManager, this, ClientState);
 
             Commands.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
@@ -276,19 +276,14 @@ namespace FCNameColor
 
         private SeString BuildSeString(string content)
         {
-            return new SeString(new Payload[]
-            {
-                new UIForegroundPayload(Convert.ToUInt16(config.UiColor)),
+            return new SeString(new UIForegroundPayload(Convert.ToUInt16(config.UiColor)),
                 new UIGlowPayload(config.Glow ? Convert.ToUInt16(config.UiColor) : (ushort) 0),
-                new TextPayload(content),
-                UIGlowPayload.UIGlowOff,
-                UIForegroundPayload.UIForegroundOff
-            });
+                new TextPayload(content), UIGlowPayload.UIGlowOff, UIForegroundPayload.UIForegroundOff);
         }
 
         private unsafe void NamePlates_OnUpdate(NamePlateUpdateEventArgs args)
         {
-            if (!config.Enabled || members == null)
+            if (!config.Enabled || members == null || ClientState.IsPvP)
             {
                 return;
             }

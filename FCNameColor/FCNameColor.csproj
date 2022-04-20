@@ -6,8 +6,8 @@
         <AssemblyTitle>FCNameColor</AssemblyTitle>
         <Product>FCNameColor</Product>
         <Copyright>Copyright © 2022</Copyright>
-        <AssemblyVersion>2.0.3.0</AssemblyVersion>
-        <FileVersion>2.0.3.0</FileVersion>
+        <AssemblyVersion>2.0.3.1</AssemblyVersion>
+        <FileVersion>2.0.3.1</FileVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <OutputPath>bin\$(Configuration)\</OutputPath>
         <PreserveCompilationContext>false</PreserveCompilationContext>
@@ -68,5 +68,6 @@
         <Exec Command="if not exist $(AppData)\XIVLauncher\devPlugins\$(TargetName) (mkdir $(AppData)\XIVLauncher\devPlugins\$(TargetName))" />
         <Exec Command="copy $(TargetDir)*.dll $(AppData)\XIVLauncher\devPlugins\$(TargetName)" />
         <Exec Command="copy $(TargetDir)*.pdb $(AppData)\XIVLauncher\devPlugins\$(TargetName)" />
+        <Exec Command="copy $(TargetDir)*.json $(AppData)\XIVLauncher\devPlugins\$(TargetName)" />
     </Target>
 </Project>
