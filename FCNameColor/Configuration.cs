@@ -29,7 +29,15 @@ namespace FCNameColor
         /// </summary>
         public Dictionary<string, FC> PlayerFCs { get; set; } = new();
 
+        /// <summary>
+        /// A mapping of player IDs and player names to ignore processing of.
+        /// </summary>
         public Dictionary<string, string> IgnoredPlayers { get; set; } = new();
+
+        /// <summary>
+        /// A list of additional FCs to track, mapped by player name.
+        /// </summary>
+        public Dictionary<string, List<FCConfig>> AdditionalFCs { get; set; } = new();
 
         [NonSerialized]
         private DalamudPluginInterface pluginInterface;
