@@ -53,6 +53,8 @@ namespace FCNameColor
         private List<FCMember> members;
         private uint worldId;
         private bool initialized;
+        private string playerName;
+        private string worldName;
 
         public bool Loading;
         public const int CooldownTime = 10;
@@ -60,10 +62,9 @@ namespace FCNameColor
         public bool NotInFC;
         public bool Error;
         public FC FC;
-        public string PlayerName;
-        public string WorldName;
+        public string PlayerKey;
         public bool SearchingFC;
-        public bool SearchingFCError;
+        public string SearchingFCError = "";
 
         public Plugin(DataManager dataManager, GameGui g)
         {
@@ -83,6 +84,16 @@ namespace FCNameColor
             }
 
             config.Initialize(Pi);
+
+            if (!config.Groups.ContainsKey("Other FC"))
+            {
+                config.Groups.Add("Other FC", new Group
+                {
+                    UiColor = "52",
+                    Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1f)
+                });
+                config.Save();
+            }
 
             xivCommonBase = new XivCommonBase(Hooks.NamePlates);
             xivCommonBase.Functions.NamePlates.OnUpdate += NamePlates_OnUpdate;
@@ -128,9 +139,10 @@ namespace FCNameColor
             }
 
             var lp = ClientState.LocalPlayer;
-            PlayerName = lp.Name.TextValue;
-            WorldName = lp.HomeWorld.GameData.Name;
+            playerName = lp.Name.TextValue;
+            worldName = lp.HomeWorld.GameData.Name;
             worldId = lp.HomeWorld.Id;
+            PlayerKey = $"{playerName}@{worldName}";
 
             if (!loggingIn && initialized)
             {
@@ -139,7 +151,7 @@ namespace FCNameColor
 
             loggingIn = false;
             PluginLog.Debug(
-                $"Logged in as {PlayerName} @ {WorldName}.");
+                $"Logged in as {playerName} @ {worldName}.");
             _ = FetchData();
         }
 
@@ -172,7 +184,7 @@ namespace FCNameColor
             timer.Elapsed += OnFinish;
         }
 
-        public async Task<FCConfig> SearchFC(string id)
+        public async Task<FCConfig> SearchFC(string id, string group)
         {
             SearchingFC = true;
             lodestoneClient ??= await LodestoneClient.GetClientAsync();
@@ -180,26 +192,28 @@ namespace FCNameColor
             PluginLog.Debug($"Fetched FC {id}: {fc?.Name ?? "(Not found)"}");
             if (fc == null)
             {
-                SearchingFCError = true;
+                SearchingFCError = "FC could not be found, please make sure it exists.";
+                SearchingFC = false;
+                return null;
+            }
+
+            if (fc.World != worldName)
+            {
+                SearchingFCError = "FC is from another server. Currently only FCs from the same server are supported.";
                 SearchingFC = false;
                 return null;
             }
 
             var result = new FCConfig
             {
-                UiColor = "52",
-                Color = new Vector4(0.07450981f,
-                    0.8f,
-                    0.6392157f,
-                    1f),
+                Group = group,
                 FC = new FC
                 {
                     ID = id, Name = fc.Name, Members = Array.Empty<FCMember>(),
                     LastUpdated = DateTime.Now
                 }
             };
-            var playerKey = $"{PlayerName}@{WorldName}";
-            config.AdditionalFCs[playerKey].Add(result);
+            config.AdditionalFCs[PlayerKey].Add(result);
             config.Save();
             SearchingFC = false;
 
@@ -212,17 +226,16 @@ namespace FCNameColor
 
         private async Task UpdateFCMembers(string id)
         {
-            var playerKey = $"{PlayerName}@{WorldName}";
-            var index = config.AdditionalFCs[playerKey].FindIndex(f => f.FC.ID == id);
+            var index = config.AdditionalFCs[PlayerKey].FindIndex(f => f.FC.ID == id);
             if (index < 0)
             {
                 return;
             }
 
-            var fc = config.AdditionalFCs[playerKey][index];
+            var fc = config.AdditionalFCs[PlayerKey][index];
             var m = await FetchFCMembers(id);
             fc.FC.Members = m.ToArray();
-            config.AdditionalFCs[playerKey][index] = fc;
+            config.AdditionalFCs[PlayerKey][index] = fc;
             config.Save();
         }
 
@@ -260,7 +273,7 @@ namespace FCNameColor
 
         private async Task FetchData()
         {
-            if (string.IsNullOrEmpty(PlayerName))
+            if (string.IsNullOrEmpty(playerName))
             {
                 return;
             }
@@ -279,7 +292,7 @@ namespace FCNameColor
 
             lodestoneClient ??= await LodestoneClient.GetClientAsync();
 
-            var playerCacheName = $"{PlayerName}@{WorldName}";
+            var playerCacheName = $"{playerName}@{worldName}";
             PluginLog.Debug($"Fetching data for {playerCacheName}");
             config.PlayerIDs.TryGetValue(playerCacheName, out var playerId);
 
@@ -289,11 +302,11 @@ namespace FCNameColor
                 var playerSearch = await lodestoneClient.SearchCharacter(
                     new CharacterSearchQuery
                     {
-                        World = WorldName,
-                        CharacterName = $"\"{PlayerName}\""
+                        World = worldName,
+                        CharacterName = $"\"{playerName}\""
                     });
                 playerId = playerSearch?.Results
-                    .FirstOrDefault(entry => entry.Name == PlayerName)?.Id;
+                    .FirstOrDefault(entry => entry.Name == playerName)?.Id;
                 if (string.IsNullOrEmpty(playerId))
                 {
                     PluginLog.Error("Could not find player on Lodestone");
@@ -348,19 +361,18 @@ namespace FCNameColor
                     firstTime = false;
                 }
 
-                var playerKey = $"{PlayerName}@{WorldName}";
-                if (!config.AdditionalFCs.ContainsKey(playerKey))
+                if (!config.AdditionalFCs.ContainsKey(PlayerKey))
                 {
-                    config.AdditionalFCs.Add(playerKey, new List<FCConfig>());
+                    config.AdditionalFCs.Add(PlayerKey, new List<FCConfig>());
                     config.Save();
                 }
 
-                var additionalFCs = config.AdditionalFCs[playerKey];
+                var additionalFCs = config.AdditionalFCs[PlayerKey];
 
                 async void ScheduleFCUpdates()
                 {
                     PluginLog.Debug("Scheduling additional FC updates");
-                    foreach (var additionalFC in additionalFCs.ToArray())
+                    foreach (var additionalFC in additionalFCs.ToList())
                     {
                         if ((DateTime.Now - additionalFC.FC.LastUpdated).TotalHours < 1)
                         {
@@ -442,7 +454,7 @@ namespace FCNameColor
 
             if (!members.Exists(member => member.Name == target.Name.TextValue))
             {
-                var additionalFCs = config.AdditionalFCs[$"{PlayerName}@{WorldName}"];
+                var additionalFCs = config.AdditionalFCs[PlayerKey];
                 var additionalFCIndex =
                     additionalFCs.FindIndex(f => f.FC.Members.Any(m => m.Name == target.Name.TextValue));
 
@@ -451,12 +463,15 @@ namespace FCNameColor
                     return;
                 }
 
-                color = additionalFCs[additionalFCIndex].Color;
-                uiColor = additionalFCs[additionalFCIndex].UiColor;
+                var additionalFC = additionalFCs[additionalFCIndex];
+                var group = config.Groups.ContainsKey(additionalFC.Group)
+                    ? config.Groups[additionalFC.Group]
+                    : config.Groups["Other FC"];
+                color = group.Color;
+                uiColor = group.UiColor;
             }
 
-            if (
-                config.IgnoredPlayers.ContainsKey(target.Name.TextValue))
+            if (config.IgnoredPlayers.ContainsKey(target.Name.TextValue))
             {
                 return;
             }

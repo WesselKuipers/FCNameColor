@@ -1,8 +1,8 @@
-﻿using Dalamud.Configuration;
-using Dalamud.Plugin;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Dalamud.Configuration;
+using Dalamud.Plugin;
 
 namespace FCNameColor
 {
@@ -35,12 +35,27 @@ namespace FCNameColor
         public Dictionary<string, string> IgnoredPlayers { get; set; } = new();
 
         /// <summary>
+        /// The list of groups that FCs can be assigned to.
+        /// </summary>
+        public Dictionary<string, Group> Groups { get; set; } = new()
+        {
+            {
+                "Other FC", new Group
+                {
+                    UiColor = "52", Color = new Vector4(0.07450981f,
+                        0.8f,
+                        0.6392157f,
+                        1f)
+                }
+            }
+        };
+
+        /// <summary>
         /// A list of additional FCs to track, mapped by player name.
         /// </summary>
         public Dictionary<string, List<FCConfig>> AdditionalFCs { get; set; } = new();
 
-        [NonSerialized]
-        private DalamudPluginInterface pluginInterface;
+        [NonSerialized] private DalamudPluginInterface pluginInterface;
 
         public void Initialize(DalamudPluginInterface pluginInterface)
         {

@@ -28,6 +28,25 @@ namespace FCNameColor
         /// </summary>
         public DateTime LastUpdated;
     }
+
+    public struct Group
+    {
+        /// <summary>
+        /// The selected color to apply.
+        /// </summary>
+        public Vector4 Color;
+
+        /// <summary>
+        /// The UI color ID.
+        /// </summary>
+        public string UiColor;
+
+        public Group(string uiColor, Vector4 color)
+        {
+            UiColor = uiColor;
+            Color = color;
+        }
+    }
     
     /// <summary>
     /// A configuration specific to an FC.
@@ -40,19 +59,24 @@ namespace FCNameColor
         public FC FC;
 
         /// <summary>
-        /// The selected color to apply.
+        /// The name of the group this FC is assigned to.
         /// </summary>
-        public Vector4 Color;
-
-        /// <summary>
-        /// The UI color ID.
-        /// </summary>
-        public string UiColor;
+        public string Group;
     }
 
+    /// <summary>
+    /// A representation of an FC’s member.
+    /// </summary>
     public struct FCMember
     {
+        /// <summary>
+        /// The Lodestone ID of the member.
+        /// </summary>
         public string ID;
+        
+        /// <summary>
+        /// The name of the member.
+        /// </summary>
         public string Name;
     }
 }
