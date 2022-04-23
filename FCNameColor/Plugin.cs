@@ -362,8 +362,15 @@ namespace FCNameColor
                     PluginLog.Debug("Scheduling additional FC updates");
                     foreach (var additionalFC in additionalFCs.ToArray())
                     {
-                        PluginLog.Debug($"Waiting 10 seconds for {additionalFC.FC.Name}");
-                        await Task.Delay(10000);
+                        if ((DateTime.Now - additionalFC.FC.LastUpdated).TotalHours < 1)
+                        {
+                            PluginLog.Debug(
+                                $"Skipping updating {additionalFC.FC.Name}, it was updated less than 2 hours ago.");
+                            continue;
+                        }
+
+                        PluginLog.Debug($"Waiting 30 seconds before updating {additionalFC.FC.Name}");
+                        await Task.Delay(30000);
 
                         PluginLog.Debug($"Updating {additionalFC.FC.Name}");
                         await UpdateFCMembers(additionalFC.FC.ID);
