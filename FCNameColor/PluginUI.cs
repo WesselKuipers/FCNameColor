@@ -366,6 +366,8 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                 ImGui.SameLine();
                 if (ImGui.Button("Add FC"))
                 {
+                    fcUrl = "";
+                    plugin.SearchingFCError = false;
                     showAddAdditionalFC = true;
                 }
 
