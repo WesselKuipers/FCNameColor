@@ -397,11 +397,13 @@ namespace FCNameColor
             }
         }
 
-        private SeString BuildSeString(string content, string uiColor)
+        private SeString BuildSeString(SeString content, string uiColor)
         {
-            return new SeString(new UIForegroundPayload(Convert.ToUInt16(uiColor)),
-                new UIGlowPayload(config.Glow ? Convert.ToUInt16(uiColor) : (ushort) 0),
-                new TextPayload(content), UIGlowPayload.UIGlowOff, UIForegroundPayload.UIForegroundOff);
+            content.Payloads.Insert(0, new UIForegroundPayload(Convert.ToUInt16(uiColor)));
+            content.Payloads.Insert(1, new UIGlowPayload(config.Glow ? Convert.ToUInt16(uiColor) : (ushort) 0));
+            content.Payloads.Add(UIGlowPayload.UIGlowOff);
+            content.Payloads.Add(UIForegroundPayload.UIForegroundOff);
+            return content;
         }
 
         private unsafe void NamePlates_OnUpdate(NamePlateUpdateEventArgs args)
@@ -493,7 +495,7 @@ namespace FCNameColor
 
             if (!isInDuty && !shouldReplaceName)
             {
-                var newFCString = BuildSeString(args.FreeCompany.TextValue, uiColor);
+                var newFCString = BuildSeString(args.FreeCompany, uiColor);
                 args.FreeCompany = newFCString;
             }
 
@@ -507,7 +509,7 @@ namespace FCNameColor
             }
             else
             {
-                var newFCString = BuildSeString(args.FreeCompany.TextValue, uiColor);
+                var newFCString = BuildSeString(args.FreeCompany, uiColor);
                 args.FreeCompany = newFCString;
             }
 
