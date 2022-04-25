@@ -138,20 +138,20 @@ namespace FCNameColor
                 return;
             }
 
+            if (!loggingIn && initialized)
+            {
+                return;
+            }
+            
             var lp = ClientState.LocalPlayer;
             playerName = lp.Name.TextValue;
             worldName = lp.HomeWorld.GameData.Name;
             worldId = lp.HomeWorld.Id;
             PlayerKey = $"{playerName}@{worldName}";
 
-            if (!loggingIn && initialized)
-            {
-                return;
-            }
-
             loggingIn = false;
             PluginLog.Debug(
-                $"Logged in as {playerName} @ {worldName}.");
+                $"Logged in as {PlayerKey}.");
             _ = FetchData();
         }
 
@@ -450,15 +450,23 @@ namespace FCNameColor
             {
                 return;
             }
+            
 
+            var name = target.Name.TextValue;
+
+            if (config.IgnoredPlayers.ContainsKey(name))
+            {
+                return;
+            }
+            
             var color = config.Color;
             var uiColor = config.UiColor;
 
-            if (!members.Exists(member => member.Name == target.Name.TextValue))
+            if (!members.Exists(member => member.Name == name))
             {
                 var additionalFCs = config.AdditionalFCs[PlayerKey];
                 var additionalFCIndex =
-                    additionalFCs.FindIndex(f => f.FC.Members.Any(m => m.Name == target.Name.TextValue));
+                    additionalFCs.FindIndex(f => f.FC.Members.Any(m => m.Name == name));
 
                 if (additionalFCIndex < 0)
                 {
@@ -473,14 +481,9 @@ namespace FCNameColor
                 uiColor = group.UiColor;
             }
 
-            if (config.IgnoredPlayers.ContainsKey(target.Name.TextValue))
-            {
-                return;
-            }
-
             if (isInDuty && config.IncludeDuties)
             {
-                PluginLog.Debug($"Overriding player nameplate for {args.Name.TextValue} (ObjectID {objectID})");
+                PluginLog.Debug("Overriding player nameplate for {name} (ObjectID {objectID})", name, objectID);
                 args.Colour = new RgbaColour
                 {
                     A = (byte) (color.W * 255), R = (byte) (color.X * 255),
@@ -490,9 +493,6 @@ namespace FCNameColor
             }
 
             var shouldReplaceName = !config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer;
-            PluginLog.Debug(
-                $"Name: {args.Name.TextValue}, shouldReplaceName: {shouldReplaceName}, IsInDuty: {isInDuty}, OnlyColorFCTag: {config.OnlyColorFCTag}, isPartyMember: {isPartyMember}, isLocalPlayer: {isLocalPlayer}");
-
             if (!isInDuty && !shouldReplaceName)
             {
                 var newFCString = BuildSeString(args.FreeCompany, uiColor);
@@ -513,7 +513,7 @@ namespace FCNameColor
                 args.FreeCompany = newFCString;
             }
 
-            PluginLog.Debug($"Overriding player nameplate for {args.Name.TextValue} (ObjectID {objectID})");
+            PluginLog.Debug("Overriding player nameplate for {name} (ObjectID {objectID})", name, objectID);
         }
 
         protected virtual void Dispose(bool disposing)
