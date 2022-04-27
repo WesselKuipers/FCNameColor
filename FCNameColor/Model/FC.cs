@@ -19,6 +19,11 @@ namespace FCNameColor
         public string Name;
         
         /// <summary>
+        /// The World of the FC.
+        /// </summary>
+        public string World;
+        
+        /// <summary>
         /// The list of FC members
         /// </summary>
         public FCMember[] Members;

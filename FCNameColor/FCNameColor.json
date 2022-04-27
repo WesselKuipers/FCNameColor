@@ -5,7 +5,7 @@
   "CategoryTags": ["ui", "social"],
   "Description": "Color your FC’s tag or the entire nameplate if they are in your FC. Use /fcnc to open up the config.",
   "InternalName": "FCNameColor",
-  "AssemblyVersion": "2.1.0.2",
+  "AssemblyVersion": "2.1.0.3",
   "RepoUrl": "https://github.com/WesselKuipers/FCNameColor",
   "IconUrl": "https://github.com/WesselKuipers/FCNameColor/raw/main/images/icon.png",
   "ApplicableVersion": "any",

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
@@ -374,6 +375,8 @@ namespace FCNameColor
                     configuration.PlayerFCs = new Dictionary<string, FC>();
                     configuration.PlayerIDs = new Dictionary<string, string>();
                     configuration.Save();
+                    showAddAdditionalFC = false;
+                    plugin.SearchingFC = false;
                     plugin.Reload();
                 }
             }
@@ -447,7 +450,7 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
 
                 ImGui.End();
             }
-
+            
             var additionalFCs = configuration.AdditionalFCs[plugin.PlayerKey];
 
             if (showAdditionalFCConfig)
@@ -457,7 +460,6 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                 ImGui.Begin("FC Name Color Config - Additional FCs", ref showAdditionalFCConfig);
                 ImGui.Spacing();
                 ImGui.TextWrapped("Track FCs that aren’t your own.");
-                ImGui.TextWrapped("These FCs must be on the same server.");
 
                 if (ImGui.Button("Add FC"))
                 {
@@ -513,13 +515,18 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
 
                 if (showAddAdditionalFC || plugin.SearchingFC)
                 {
-                    ImGui.SetNextWindowSize(new Vector2(600, 120), ImGuiCond.FirstUseEver);
-                    ImGui.Begin("FC Name Color Config - Adding Additional FC", ref showAddAdditionalFC);
+                    ImGui.Begin("FC Name Color Config - Adding Additional FC", ref showAddAdditionalFC, ImGuiWindowFlags.AlwaysAutoResize);
                     ImGui.Spacing();
 
                     ImGui.Text("Please enter the lodestone URL of the FC.");
+                    ImGui.SameLine();
+                    if (ImGui.SmallButton("Open Lodestone"))
+                    {
+                        Process.Start("explorer", "https://eu.finalfantasyxiv.com/lodestone/community/search/");
+                    }
                     ImGui.Text(
                         "It should look like this: https://eu.finalfantasyxiv.com/lodestone/freecompany/1234567890123456789");
+                    ImGui.SetNextItemWidth(500f * ImGuiHelpers.GlobalScale);
                     ImGui.InputTextWithHint("###FCUrl",
                         "https://eu.finalfantasyxiv.com/lodestone/freecompany/1234567890123456789",
                         ref fcUrl, 100);
