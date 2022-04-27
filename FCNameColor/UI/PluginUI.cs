@@ -110,6 +110,13 @@ namespace FCNameColor
             if (ImGui.Begin("FC Name Color Config", ref visible,
                     ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
+                if (plugin.FirstTime)
+                {
+                    ImGui.TextColored(ImGuiColors.DalamudYellow,
+                        "Plugin is setting up for the first time, please wait a moment.");
+                    ImGui.End();
+                }
+
                 var enabled = configuration.Enabled;
                 if (ImGui.Checkbox("Enabled", ref enabled))
                 {
@@ -450,7 +457,7 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
 
                 ImGui.End();
             }
-            
+
             var additionalFCs = configuration.AdditionalFCs[plugin.PlayerKey];
 
             if (showAdditionalFCConfig)
@@ -515,7 +522,8 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
 
                 if (showAddAdditionalFC || plugin.SearchingFC)
                 {
-                    ImGui.Begin("FC Name Color Config - Adding Additional FC", ref showAddAdditionalFC, ImGuiWindowFlags.AlwaysAutoResize);
+                    ImGui.Begin("FC Name Color Config - Adding Additional FC", ref showAddAdditionalFC,
+                        ImGuiWindowFlags.AlwaysAutoResize);
                     ImGui.Spacing();
 
                     ImGui.Text("Please enter the lodestone URL of the FC.");
@@ -524,6 +532,7 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                     {
                         Process.Start("explorer", "https://eu.finalfantasyxiv.com/lodestone/community/search/");
                     }
+
                     ImGui.Text(
                         "It should look like this: https://eu.finalfantasyxiv.com/lodestone/freecompany/1234567890123456789");
                     ImGui.SetNextItemWidth(500f * ImGuiHelpers.GlobalScale);

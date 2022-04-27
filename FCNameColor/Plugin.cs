@@ -48,15 +48,15 @@ namespace FCNameColor
         private readonly FCNameColorProvider fcNameColorProvider;
         private PluginUI UI { get; }
         private bool loggingIn;
-        private bool firstTime;
         private readonly Timer timer = new() {Interval = 1000};
         private List<FCMember> members;
         private uint worldId;
         private bool initialized;
         private string playerName;
         private string worldName;
-        private HashSet<uint> skipCache = new();
+        private readonly HashSet<uint> skipCache = new();
 
+        public bool FirstTime;
         public bool Loading;
         public const int CooldownTime = 10;
         public int Cooldown;
@@ -80,12 +80,11 @@ namespace FCNameColor
             };
             if (config == null)
             {
-                firstTime = true;
+                FirstTime = true;
                 config = new Configuration();
             }
 
             config.Initialize(Pi);
-
             if (!config.Groups.ContainsKey("Other FC"))
             {
                 config.Groups.Add("Other FC", new Group
@@ -292,7 +291,7 @@ namespace FCNameColor
             timer.Start();
             PluginLog.Debug("Fetching data");
 
-            if (firstTime)
+            if (FirstTime)
             {
                 Chat.Print(
                     "[FCNameColor]: First-time setup - Fetching FC members from Lodestone. Plugin will work once this is done.");
@@ -371,10 +370,10 @@ namespace FCNameColor
                 PluginLog.Debug($"Finished fetching data. Fetched {members.Count} members.");
                 FC = fc;
 
-                if (firstTime)
+                if (FirstTime)
                 {
                     Chat.Print($"[FCNameColor]: First-time setup finished. Fetched {members.Count} members.");
-                    firstTime = false;
+                    FirstTime = false;
                 }
 
                 var additionalFCs = config.AdditionalFCs[PlayerKey];
