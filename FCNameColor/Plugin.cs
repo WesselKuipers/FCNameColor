@@ -171,7 +171,7 @@ namespace FCNameColor
         {
             PluginLog.Debug("Running HandleError");
             Error = true;
-            Cooldown = CooldownTime * 2;
+            Cooldown = CooldownTime * 6;
             timer.Start();
 
             void OnFinish(object sender, ElapsedEventArgs e)
@@ -238,11 +238,20 @@ namespace FCNameColor
                 return;
             }
 
-            var fc = config.AdditionalFCs[PlayerKey][index];
-            var m = await FetchFCMembers(id);
-            fc.FC.Members = m.ToArray();
-            config.AdditionalFCs[PlayerKey][index] = fc;
-            config.Save();
+            try
+            {
+                var fc = config.AdditionalFCs[PlayerKey][index];
+                var m = await FetchFCMembers(id);
+                fc.FC.Members = m.ToArray();
+                config.AdditionalFCs[PlayerKey][index] = fc;
+                config.Save();
+                PluginLog.Debug("Finished fetching FC members for {fc}. Fetched {members} members.", fc.FC.Name, m.Count);
+            }
+            catch
+            {
+                PluginLog.Error("Something went wrong when trying to fetch and update the FC members.");
+            }
+            
             skipCache.Clear();
         }
 
@@ -287,6 +296,7 @@ namespace FCNameColor
 
             initialized = true;
             Loading = true;
+            Error = false;
             Cooldown = CooldownTime;
             timer.Start();
             PluginLog.Debug("Fetching data");

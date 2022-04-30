@@ -115,6 +115,7 @@ namespace FCNameColor
                     ImGui.TextColored(ImGuiColors.DalamudYellow,
                         "Plugin is setting up for the first time, please wait a moment.");
                     ImGui.End();
+                    return;
                 }
 
                 var enabled = configuration.Enabled;
@@ -231,11 +232,14 @@ namespace FCNameColor
                 {
                     PluginLog.Debug($"Deleting group {currentGroup}");
                     configuration.Groups.Remove(currentGroup);
-                    for (var i = 0; i < configuration.AdditionalFCs[plugin.PlayerKey].Count; i++)
+                    if (configuration.AdditionalFCs.ContainsKey(plugin.PlayerKey))
                     {
-                        if (configuration.AdditionalFCs[plugin.PlayerKey][i].Group == currentGroup)
+                        for (var i = 0; i < configuration.AdditionalFCs[plugin.PlayerKey].Count; i++)
                         {
-                            configuration.AdditionalFCs[plugin.PlayerKey][i].Group = "Other FC";
+                            if (configuration.AdditionalFCs[plugin.PlayerKey][i].Group == currentGroup)
+                            {
+                                configuration.AdditionalFCs[plugin.PlayerKey][i].Group = "Other FC";
+                            }
                         }
                     }
 
@@ -458,7 +462,11 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                 ImGui.End();
             }
 
-            var additionalFCs = configuration.AdditionalFCs[plugin.PlayerKey];
+            if (!configuration.AdditionalFCs.TryGetValue(plugin.PlayerKey, out var additionalFCs))
+            {
+                additionalFCs = new List<FCConfig>();
+                configuration.AdditionalFCs.TryAdd(plugin.PlayerKey, additionalFCs);
+            }
 
             if (showAdditionalFCConfig)
             {
@@ -551,25 +559,37 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                         {
                             var match = fcUrlPattern.Match(fcUrl);
                             var id = match.Groups[2].Value;
+                            var shouldContinue = true;
 
-                            if (id == configuration.PlayerFCs[configuration.PlayerIDs[plugin.PlayerKey]].ID)
+                            if (configuration.PlayerIDs.TryGetValue(plugin.PlayerKey, out var currentPlayerID))
                             {
-                                ImGui.OpenPopup("###SameFC");
-                            }
-                            else if (additionalFCs.Exists(fc => fc.FC.ID == id))
-                            {
-                                ImGui.OpenPopup("###AddFCDupe");
-                            }
-                            else
-                            {
-                                plugin.SearchFC(id, "Other FC").ContinueWith(async fc =>
+                                if (configuration.PlayerFCs.TryGetValue(currentPlayerID, out var playerFC))
                                 {
-                                    var result = await fc;
-                                    if (result != null)
+                                    if (playerFC.ID == id)
                                     {
-                                        showAddAdditionalFC = false;
+                                        ImGui.OpenPopup("###SameFC");
+                                        shouldContinue = false;
                                     }
-                                });
+                                }
+                            }
+
+                            if (shouldContinue)
+                            {
+                                if (additionalFCs.Exists(fc => fc.FC.ID == id))
+                                {
+                                    ImGui.OpenPopup("###AddFCDupe");
+                                }
+                                else
+                                {
+                                    plugin.SearchFC(id, "Other FC").ContinueWith(async fc =>
+                                    {
+                                        var result = await fc;
+                                        if (result != null)
+                                        {
+                                            showAddAdditionalFC = false;
+                                        }
+                                    });
+                                }
                             }
                         }
                     }
