@@ -95,6 +95,18 @@ namespace FCNameColor
                 config.Save();
             }
 
+            if (config.AdditionalFCs.Any(character => character.Value.Any(fc => fc.FC.Name == null)))
+            {
+                // Remove any invalid entry from the list of invalid FCs.
+                // This prevents unexpected behaviour if an FC got added without proper data.
+                foreach (var character in config.AdditionalFCs)
+                {
+                    config.AdditionalFCs[character.Key].RemoveAll(fc => fc.FC.Name == null);
+                }
+
+                config.Save();
+            }
+
             xivCommonBase = new XivCommonBase(Hooks.NamePlates);
             xivCommonBase.Functions.NamePlates.OnUpdate += NamePlates_OnUpdate;
 
@@ -195,7 +207,7 @@ namespace FCNameColor
             {
                 var fc = await lodestoneClient.GetFreeCompany(id);
                 PluginLog.Debug($"Fetched FC {id}: {fc?.Name ?? "(Not found)"}");
-                if (fc == null)
+                if (fc?.Name == null)
                 {
                     SearchingFCError = "FC could not be found, please make sure it exists.";
                     SearchingFC = false;
@@ -245,13 +257,14 @@ namespace FCNameColor
                 fc.FC.Members = m.ToArray();
                 config.AdditionalFCs[PlayerKey][index] = fc;
                 config.Save();
-                PluginLog.Debug("Finished fetching FC members for {fc}. Fetched {members} members.", fc.FC.Name, m.Count);
+                PluginLog.Debug("Finished fetching FC members for {fc}. Fetched {members} members.", fc.FC.Name,
+                    m.Count);
             }
             catch
             {
                 PluginLog.Error("Something went wrong when trying to fetch and update the FC members.");
             }
-            
+
             skipCache.Clear();
         }
 

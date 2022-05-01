@@ -527,7 +527,6 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
 
                 ImGui.End();
 
-
                 if (showAddAdditionalFC || plugin.SearchingFC)
                 {
                     ImGui.Begin("FC Name Color Config - Adding Additional FC", ref showAddAdditionalFC,
@@ -555,7 +554,13 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                     }
                     else
                     {
-                        if (ImGui.Button("Search FC"))
+                        var isMatch = fcUrl.Length > 0 && fcUrlPattern.IsMatch(fcUrl);
+
+                        if (!isMatch)
+                        {
+                            ImGuiComponents.DisabledButton("Search FC");
+                        }
+                        else if (isMatch && ImGui.Button("Search FC"))
                         {
                             var match = fcUrlPattern.Match(fcUrl);
                             var id = match.Groups[2].Value;
