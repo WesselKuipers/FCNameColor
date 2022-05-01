@@ -139,7 +139,7 @@ namespace FCNameColor
                 if (plugin.NotInFC)
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(ImGuiColors.DalamudRed, "Couldn’t find FC");
+                    ImGui.TextColored(ImGuiColors.DalamudRed, "Character not in FC");
                 }
                 else if (plugin.Loading && !plugin.Error)
                 {

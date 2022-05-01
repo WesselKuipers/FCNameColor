@@ -373,6 +373,7 @@ namespace FCNameColor
             {
                 PluginLog.Debug("Player is not in an FC.");
                 NotInFC = true;
+                members = new List<FCMember>();
                 return;
             }
 
