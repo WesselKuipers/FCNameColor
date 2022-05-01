@@ -6,8 +6,8 @@
         <AssemblyTitle>FCNameColor</AssemblyTitle>
         <Product>FCNameColor</Product>
         <Copyright>Copyright © 2022</Copyright>
-        <AssemblyVersion>2.1.0.4</AssemblyVersion>
-        <FileVersion>2.1.0.4</FileVersion>
+        <AssemblyVersion>2.1.0.5</AssemblyVersion>
+        <FileVersion>2.1.0.5</FileVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <OutputPath>bin\$(Configuration)\</OutputPath>
         <PreserveCompilationContext>false</PreserveCompilationContext>
@@ -21,8 +21,8 @@
         <DebugType>pdbonly</DebugType>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.1.5" />
-        <PackageReference Include="XivCommon" Version="4.0.0" />
+        <PackageReference Include="DalamudPackager" Version="2.1.7" />
+        <PackageReference Include="XivCommon" Version="5.0.0" />
     </ItemGroup>
     <ItemGroup>
         <Reference Include="Dalamud">
