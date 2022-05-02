@@ -106,9 +106,9 @@ namespace FCNameColor
             }
 
             ImGui.SetNextWindowSize(new Vector2(380, 550), ImGuiCond.FirstUseEver);
-            ImGui.SetNextWindowSizeConstraints(new Vector2(380, 550), new Vector2(380, float.MaxValue));
+            ImGui.SetNextWindowSizeConstraints(new Vector2(380, 550), new Vector2(float.MaxValue, float.MaxValue));
             if (ImGui.Begin("FC Name Color Config", ref visible,
-                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
+                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.AlwaysAutoResize))
             {
                 if (plugin.FirstTime)
                 {
@@ -345,7 +345,7 @@ namespace FCNameColor
                         ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, Vector4.Zero);
                         ImGui.PushStyleColor(ImGuiCol.FrameBg, Vector4.Zero);
                         var selected = true;
-                        ImGui.Checkbox("Selected", ref selected);
+                        ImGui.Checkbox("", ref selected);
                         ImGui.PopStyleColor(3);
                         ImGui.SetCursorPos(newCursor);
                     }
@@ -472,7 +472,7 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
             {
                 ImGui.SetNextWindowSize(new Vector2(325, 250), ImGuiCond.FirstUseEver);
                 ImGui.SetNextWindowSizeConstraints(new Vector2(325, 250), new Vector2(float.MaxValue, float.MaxValue));
-                ImGui.Begin("FC Name Color Config - Additional FCs", ref showAdditionalFCConfig);
+                ImGui.Begin("FC Name Color Config - Additional FCs", ref showAdditionalFCConfig, ImGuiWindowFlags.AlwaysAutoResize);
                 ImGui.Spacing();
                 ImGui.TextWrapped("Track FCs that aren’t your own.");
 
