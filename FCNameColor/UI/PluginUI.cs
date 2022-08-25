@@ -50,6 +50,11 @@ namespace FCNameColor
         private string newGroup;
         private bool showAddNewGroup;
 
+        private void ForceRedraw()
+        {
+            plugin.XivCommonBase.Functions.NamePlates.ForceRedraw = true;
+        }
+
         public bool Visible
         {
             get => visible;
@@ -108,7 +113,8 @@ namespace FCNameColor
             ImGui.SetNextWindowSize(new Vector2(380, 550), ImGuiCond.FirstUseEver);
             ImGui.SetNextWindowSizeConstraints(new Vector2(380, 550), new Vector2(float.MaxValue, float.MaxValue));
             if (ImGui.Begin("FC Name Color Config", ref visible,
-                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.AlwaysAutoResize))
+                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse |
+                    ImGuiWindowFlags.AlwaysAutoResize))
             {
                 if (plugin.FirstTime)
                 {
@@ -123,6 +129,7 @@ namespace FCNameColor
                 {
                     configuration.Enabled = enabled;
                     configuration.Save();
+                    ForceRedraw();
                 }
 
                 if (ImGui.IsItemHovered())
@@ -158,6 +165,7 @@ namespace FCNameColor
                 {
                     configuration.OnlyColorFCTag = onlyColorFCTag;
                     configuration.Save();
+                    ForceRedraw();
                 }
 
                 var includeSelf = configuration.IncludeSelf;
@@ -165,6 +173,7 @@ namespace FCNameColor
                 {
                     configuration.IncludeSelf = includeSelf;
                     configuration.Save();
+                    ForceRedraw();
                 }
 
                 if (ImGui.IsItemHovered())
@@ -177,6 +186,7 @@ namespace FCNameColor
                 {
                     configuration.IncludeDuties = includeDuties;
                     configuration.Save();
+                    ForceRedraw();
                 }
 
                 if (ImGui.IsItemHovered())
@@ -189,6 +199,7 @@ namespace FCNameColor
                 {
                     configuration.Glow = glow;
                     configuration.Save();
+                    plugin.XivCommonBase.Functions.NamePlates.ForceRedraw = true;
                 }
 
                 if (ImGui.IsItemHovered())
@@ -334,6 +345,7 @@ namespace FCNameColor
                         }
 
                         configuration.Save();
+                        ForceRedraw();
                     }
 
                     if (id == (editingFC ? configuration.UiColor : configuration.Groups[currentGroup].UiColor))
@@ -472,7 +484,8 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
             {
                 ImGui.SetNextWindowSize(new Vector2(325, 250), ImGuiCond.FirstUseEver);
                 ImGui.SetNextWindowSizeConstraints(new Vector2(325, 250), new Vector2(float.MaxValue, float.MaxValue));
-                ImGui.Begin("FC Name Color Config - Additional FCs", ref showAdditionalFCConfig, ImGuiWindowFlags.AlwaysAutoResize);
+                ImGui.Begin("FC Name Color Config - Additional FCs", ref showAdditionalFCConfig,
+                    ImGuiWindowFlags.AlwaysAutoResize);
                 ImGui.Spacing();
                 ImGui.TextWrapped("Track FCs that aren’t your own.");
 

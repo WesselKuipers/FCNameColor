@@ -9,6 +9,7 @@ using Dalamud.Game;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
+using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
@@ -43,14 +44,13 @@ namespace FCNameColor
         [PluginService] public static Framework Framework { get; private set; }
 
 
-        private readonly XivCommonBase xivCommonBase;
+        public readonly XivCommonBase XivCommonBase;
         private LodestoneClient lodestoneClient;
         private readonly FCNameColorProvider fcNameColorProvider;
         private PluginUI UI { get; }
         private bool loggingIn;
         private readonly Timer timer = new() {Interval = 1000};
         private List<FCMember> members;
-        private uint worldId;
         private bool initialized;
         private string playerName;
         private string worldName;
@@ -67,7 +67,7 @@ namespace FCNameColor
         public bool SearchingFC;
         public string SearchingFCError = "";
 
-        public Plugin(DataManager dataManager, GameGui g)
+        public Plugin(DataManager dataManager)
         {
             config = Pi.GetPluginConfig() as Configuration;
             timer.Elapsed += delegate
@@ -107,8 +107,8 @@ namespace FCNameColor
                 config.Save();
             }
 
-            xivCommonBase = new XivCommonBase(Hooks.NamePlates);
-            xivCommonBase.Functions.NamePlates.OnUpdate += NamePlates_OnUpdate;
+            XivCommonBase = new XivCommonBase(Hooks.NamePlates);
+            XivCommonBase.Functions.NamePlates.OnUpdate += NamePlates_OnUpdate;
 
             UI = new PluginUI(config, dataManager, this, ClientState);
 
@@ -158,12 +158,10 @@ namespace FCNameColor
             var lp = ClientState.LocalPlayer;
             playerName = lp.Name.TextValue;
             worldName = lp.HomeWorld.GameData.Name;
-            worldId = lp.HomeWorld.Id;
             PlayerKey = $"{playerName}@{worldName}";
 
             loggingIn = false;
-            PluginLog.Debug(
-                $"Logged in as {PlayerKey}.");
+            PluginLog.Debug($"Logged in as {PlayerKey}.");
             _ = FetchData();
         }
 
@@ -431,7 +429,7 @@ namespace FCNameColor
             }
         }
 
-        private SeString BuildSeString(SeString content, string uiColor)
+        private SeString ModifySeString(SeString content, string uiColor)
         {
             content.Payloads.Insert(0, new UIForegroundPayload(Convert.ToUInt16(uiColor)));
             content.Payloads.Insert(1, new UIGlowPayload(config.Glow ? Convert.ToUInt16(uiColor) : (ushort) 0));
@@ -533,7 +531,7 @@ namespace FCNameColor
             var shouldReplaceName = !config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer;
             if (!isInDuty && !shouldReplaceName)
             {
-                var newFCString = BuildSeString(args.FreeCompany, uiColor);
+                var newFCString = ModifySeString(args.FreeCompany, uiColor);
                 args.FreeCompany = newFCString;
             }
 
@@ -547,7 +545,7 @@ namespace FCNameColor
             }
             else
             {
-                var newFCString = BuildSeString(args.FreeCompany, uiColor);
+                var newFCString = ModifySeString(args.FreeCompany, uiColor);
                 args.FreeCompany = newFCString;
             }
 
@@ -567,8 +565,8 @@ namespace FCNameColor
                 Framework.Update -= OnFrameworkUpdate;
                 ClientState.Login -= OnLogin;
 
-                xivCommonBase.Functions.NamePlates.OnUpdate -= NamePlates_OnUpdate;
-                xivCommonBase.Dispose();
+                XivCommonBase.Functions.NamePlates.OnUpdate -= NamePlates_OnUpdate;
+                XivCommonBase.Dispose();
             }
             catch (Exception ex)
             {

@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <ProjectGuid>{13C812E9-0D42-4B95-8646-40EEBF30636F}</ProjectGuid>
-        <TargetFramework>net5.0-windows7.0</TargetFramework>
+        <TargetFramework>net6.0-windows</TargetFramework>
         <LangVersion>9.0</LangVersion>
         <AssemblyTitle>FCNameColor</AssemblyTitle>
         <Product>FCNameColor</Product>
         <Copyright>Copyright © 2022</Copyright>
-        <AssemblyVersion>2.1.0.5</AssemblyVersion>
-        <FileVersion>2.1.0.5</FileVersion>
+        <AssemblyVersion>3.0.0.0</AssemblyVersion>
+        <FileVersion>3.0.0.0</FileVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <OutputPath>bin\$(Configuration)\</OutputPath>
         <PreserveCompilationContext>false</PreserveCompilationContext>
@@ -21,8 +21,8 @@
         <DebugType>pdbonly</DebugType>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.1.7" />
-        <PackageReference Include="XivCommon" Version="5.0.0" />
+        <PackageReference Include="DalamudPackager" Version="2.1.8" />
+        <PackageReference Include="XivCommon" Version="6.0.1" />
     </ItemGroup>
     <ItemGroup>
         <Reference Include="Dalamud">
