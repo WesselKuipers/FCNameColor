@@ -50,11 +50,6 @@ namespace FCNameColor
         private string newGroup;
         private bool showAddNewGroup;
 
-        private void ForceRedraw()
-        {
-            plugin.XivCommonBase.Functions.NamePlates.ForceRedraw = true;
-        }
-
         public bool Visible
         {
             get => visible;
@@ -129,7 +124,6 @@ namespace FCNameColor
                 {
                     configuration.Enabled = enabled;
                     configuration.Save();
-                    ForceRedraw();
                 }
 
                 if (ImGui.IsItemHovered())
@@ -165,7 +159,6 @@ namespace FCNameColor
                 {
                     configuration.OnlyColorFCTag = onlyColorFCTag;
                     configuration.Save();
-                    ForceRedraw();
                 }
 
                 var includeSelf = configuration.IncludeSelf;
@@ -173,7 +166,6 @@ namespace FCNameColor
                 {
                     configuration.IncludeSelf = includeSelf;
                     configuration.Save();
-                    ForceRedraw();
                 }
 
                 if (ImGui.IsItemHovered())
@@ -186,7 +178,6 @@ namespace FCNameColor
                 {
                     configuration.IncludeDuties = includeDuties;
                     configuration.Save();
-                    ForceRedraw();
                 }
 
                 if (ImGui.IsItemHovered())
@@ -345,7 +336,6 @@ namespace FCNameColor
                         }
 
                         configuration.Save();
-                        ForceRedraw();
                     }
 
                     if (id == (editingFC ? configuration.UiColor : configuration.Groups[currentGroup].UiColor))

@@ -16,9 +16,11 @@
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
         <DebugType>full</DebugType>
+        <LangVersion>10.0</LangVersion>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
         <DebugType>pdbonly</DebugType>
+        <LangVersion>10.0</LangVersion>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="DalamudPackager" Version="2.1.8" />
