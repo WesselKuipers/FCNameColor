@@ -24,7 +24,6 @@
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="DalamudPackager" Version="2.1.8" />
-        <PackageReference Include="XivCommon" Version="6.0.1" />
     </ItemGroup>
     <ItemGroup>
         <Reference Include="Dalamud">

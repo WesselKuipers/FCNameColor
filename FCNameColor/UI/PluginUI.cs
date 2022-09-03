@@ -190,7 +190,6 @@ namespace FCNameColor
                 {
                     configuration.Glow = glow;
                     configuration.Save();
-                    plugin.XivCommonBase.Functions.NamePlates.ForceRedraw = true;
                 }
 
                 if (ImGui.IsItemHovered())

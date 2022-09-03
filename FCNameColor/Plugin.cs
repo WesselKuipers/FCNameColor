@@ -30,8 +30,6 @@ using Lumina.Excel.GeneratedSheets;
 using NetStone;
 using NetStone.Model.Parseables.FreeCompany.Members;
 using NetStone.Search.Character;
-using XivCommon;
-using XivCommon.Functions.NamePlates;
 using static FFXIVClientStructs.FFXIV.Client.UI.RaptureAtkModule;
 using Condition = Dalamud.Game.ClientState.Conditions.Condition;
 
@@ -52,8 +50,6 @@ namespace FCNameColor
         [PluginService] public static CommandManager Commands { get; private set; }
         [PluginService] public static Framework Framework { get; private set; }
 
-
-        public readonly XivCommonBase XivCommonBase;
         private Dictionary<uint, string> WorldNames;
         private LodestoneClient lodestoneClient;
         private readonly FCNameColorProvider fcNameColorProvider;
