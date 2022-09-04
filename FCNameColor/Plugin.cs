@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 using Dalamud.Data;
@@ -9,20 +10,29 @@ using Dalamud.Game;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
+using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
+using Dalamud.Hooking;
 using Dalamud.IoC;
 using Dalamud.Logging;
+using Dalamud.Memory;
 using Dalamud.Plugin;
+using FCNameColor.Utils;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Component.GUI;
+using Lumina.Excel.GeneratedSheets;
 using NetStone;
 using NetStone.Model.Parseables.FreeCompany.Members;
 using NetStone.Search.Character;
-using XivCommon;
-using XivCommon.Functions.NamePlates;
+using static FFXIVClientStructs.FFXIV.Client.UI.RaptureAtkModule;
+using Condition = Dalamud.Game.ClientState.Conditions.Condition;
 
 namespace FCNameColor
 {
@@ -30,31 +40,31 @@ namespace FCNameColor
     {
         public string Name => "FC Name Color";
         private const string CommandName = "/fcnc";
-
-        [PluginService] public static DalamudPluginInterface Pi { get; private set; }
-
         private readonly Configuration config;
 
+        [PluginService] public static DalamudPluginInterface Pi { get; private set; }
+        [PluginService] public static SigScanner SigScanner { get; private set; }
         [PluginService] public static ClientState ClientState { get; private set; }
         [PluginService] public static ChatGui Chat { get; private set; }
         [PluginService] public static Condition Condition { get; private set; }
         [PluginService] public static ObjectTable Objects { get; private set; }
         [PluginService] public static CommandManager Commands { get; private set; }
         [PluginService] public static Framework Framework { get; private set; }
-
-
-        private readonly XivCommonBase xivCommonBase;
+      
+        private Dictionary<uint, string> WorldNames;
         private LodestoneClient lodestoneClient;
         private readonly FCNameColorProvider fcNameColorProvider;
         private PluginUI UI { get; }
         private bool loggingIn;
         private readonly Timer timer = new() {Interval = 1000};
         private List<FCMember> members;
-        private uint worldId;
         private bool initialized;
         private string playerName;
         private string worldName;
         private readonly HashSet<uint> skipCache = new();
+
+        private unsafe delegate void* UpdateNameplateDelegate(RaptureAtkModule* raptureAtkModule, NamePlateInfo* namePlateInfo, NumberArrayData* numArray, StringArrayData* stringArray, GameObject* gameObject, int numArrayIndex, int stringArrayIndex);
+        private Hook<UpdateNameplateDelegate> updateNameplateHook;
 
         public bool FirstTime;
         public bool Loading;
@@ -67,7 +77,7 @@ namespace FCNameColor
         public bool SearchingFC;
         public string SearchingFCError = "";
 
-        public Plugin(DataManager dataManager, GameGui g)
+        public Plugin(DataManager dataManager)
         {
             config = Pi.GetPluginConfig() as Configuration;
             timer.Elapsed += delegate
@@ -107,8 +117,15 @@ namespace FCNameColor
                 config.Save();
             }
 
-            xivCommonBase = new XivCommonBase(Hooks.NamePlates);
-            xivCommonBase.Functions.NamePlates.OnUpdate += NamePlates_OnUpdate;
+            var worlds = dataManager.GetExcelSheet<World>();
+            WorldNames = new Dictionary<uint, string>(worlds.Select(w => new KeyValuePair<uint, string>(w.RowId, w.Name)));
+
+            unsafe
+            {
+                var npAddress = SigScanner.ScanText("40 53 55 56 41 56 48 81 EC ?? ?? ?? ?? 48 8B 84 24");
+                updateNameplateHook = Hook<UpdateNameplateDelegate>.FromAddress(npAddress, UpdateNameplatesDetour);
+                updateNameplateHook.Enable();
+            }
 
             UI = new PluginUI(config, dataManager, this, ClientState);
 
@@ -125,7 +142,7 @@ namespace FCNameColor
             fcNameColorProvider = new FCNameColorProvider(Pi, new FCNameColorAPI(config));
         }
 
-        private void OnCommand(string command, string args)
+            private void OnCommand(string command, string args)
         {
             UI.Visible = true;
         }
@@ -158,12 +175,10 @@ namespace FCNameColor
             var lp = ClientState.LocalPlayer;
             playerName = lp.Name.TextValue;
             worldName = lp.HomeWorld.GameData.Name;
-            worldId = lp.HomeWorld.Id;
             PlayerKey = $"{playerName}@{worldName}";
 
             loggingIn = false;
-            PluginLog.Debug(
-                $"Logged in as {PlayerKey}.");
+            PluginLog.Debug($"Logged in as {PlayerKey}.");
             _ = FetchData();
         }
 
@@ -431,7 +446,7 @@ namespace FCNameColor
             }
         }
 
-        private SeString BuildSeString(SeString content, string uiColor)
+        private SeString ModifySeString(SeString content, string uiColor)
         {
             content.Payloads.Insert(0, new UIForegroundPayload(Convert.ToUInt16(uiColor)));
             content.Payloads.Insert(1, new UIGlowPayload(config.Glow ? Convert.ToUInt16(uiColor) : (ushort) 0));
@@ -440,60 +455,50 @@ namespace FCNameColor
             return content;
         }
 
-        private unsafe void NamePlates_OnUpdate(NamePlateUpdateEventArgs args)
+        private unsafe void* UpdateNameplatesDetour(RaptureAtkModule* raptureAtkModule, NamePlateInfo* namePlateInfo, NumberArrayData* numArray, StringArrayData* stringArray, GameObject* gameObject, int numArrayIndex, int stringArrayIndex)
         {
+            var original = () => updateNameplateHook.Original(raptureAtkModule, namePlateInfo, numArray, stringArray, gameObject, numArrayIndex, stringArrayIndex);
             if (!config.Enabled || members == null || ClientState.IsPvP)
             {
-                return;
+                return original();
             }
 
-            if (args.Type != PlateType.Player || args.ObjectId == 0)
+            if (gameObject->ObjectKind != 1) { return original(); }
+
+            var battleChara = (BattleChara*)gameObject;
+            var objectID = battleChara->Character.GameObject.ObjectID;
+
+            if (skipCache.Contains(objectID))
             {
-                return;
+                return original();
             }
-
-            var objectID = args.ObjectId;
-            var skip = skipCache.Contains(objectID);
-
-            if (skip)
-            {
-                return;
-            }
-
-            var target = (PlayerCharacter) Objects.SearchById(objectID);
 
             var isLocalPlayer = ClientState?.LocalPlayer?.ObjectId == objectID;
-            var isPartyMember = GroupManager.Instance()->IsObjectIDInAlliance(objectID);
             var isInDuty = Condition[ConditionFlag.BoundByDuty56];
-
-            if (target is null)
-            {
-                return;
-            }
 
             if (isInDuty && isLocalPlayer)
             {
-                return;
+                return original();
             }
 
             if (!isInDuty && isLocalPlayer && !config.IncludeSelf)
             {
-                return;
+                return original();
             }
 
             // Skip any player who is dead, colouring the name of dead characters makes them harder to recognize.
-            if (target.CurrentHp == 0)
+            if (battleChara->Character.Health == 0)
             {
-                return;
+                return original();
             }
 
-            var name = target.Name.TextValue;
+            var name = MemoryHelper.ReadStringNullTerminated((IntPtr)gameObject->Name);
             if (config.IgnoredPlayers.ContainsKey(name))
             {
-                return;
+                return original();
             }
 
-            var world = target.HomeWorld.GameData.Name.RawString;
+            var world = WorldNames[battleChara->Character.HomeWorld];
             var color = config.Color;
             var uiColor = config.UiColor;
 
@@ -507,8 +512,9 @@ namespace FCNameColor
                 {
                     // This player isn’t an FC member or in one of the tracked FCs.
                     // We can skip it in future calls.
+                    PluginLog.Debug("Adding {name} ({id}) to skip cache", name, objectID);
                     skipCache.Add(objectID);
-                    return;
+                    return original();
                 }
 
                 var additionalFC = additionalFCs[additionalFCIndex];
@@ -521,37 +527,50 @@ namespace FCNameColor
 
             if (isInDuty && config.IncludeDuties)
             {
-                PluginLog.Debug("Overriding player nameplate for {name} (ObjectID {objectID})", name, objectID);
-                args.Colour = new RgbaColour
+                var nameString = new SeString(new TextPayload(name));
+                namePlateInfo->Name.SetSeString(ModifySeString(nameString, uiColor));
+
+                var title = namePlateInfo->Title.ToString();
+                if (title.Length > 0)
                 {
-                    A = (byte) (color.W * 255), R = (byte) (color.X * 255),
-                    G = (byte) (color.Y * 255), B = (byte) (color.Z * 255)
-                };
-                return;
+                    var titleString = new SeString(new TextPayload($"《{title}》"));
+                    namePlateInfo->DisplayTitle.SetSeString(ModifySeString(titleString, uiColor));
+                }
             }
 
-            var shouldReplaceName = !config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer;
+            var shouldReplaceName = !config.OnlyColorFCTag && !isLocalPlayer;
             if (!isInDuty && !shouldReplaceName)
             {
-                var newFCString = BuildSeString(args.FreeCompany, uiColor);
-                args.FreeCompany = newFCString;
+                var tag = MemoryHelper.ReadStringNullTerminated((IntPtr)battleChara->Character.FreeCompanyTag);
+                if (tag.Length > 0)
+                {
+                    var newFCString = ModifySeString(new SeString(new TextPayload($" «{tag}»")), uiColor);
+                    namePlateInfo->FcName.SetSeString(ModifySeString(newFCString, uiColor));
+                }
             }
 
             if (shouldReplaceName)
             {
-                args.Colour = new RgbaColour
+                var nameString = new SeString(new TextPayload(name));
+                namePlateInfo->Name.SetSeString(ModifySeString(nameString, uiColor));
+
+                var title = namePlateInfo->Title.ToString();
+                if (title.Length > 0)
                 {
-                    A = (byte) (color.W * 255), R = (byte) (color.X * 255),
-                    G = (byte) (color.Y * 255), B = (byte) (color.Z * 255)
-                };
-            }
-            else
-            {
-                var newFCString = BuildSeString(args.FreeCompany, uiColor);
-                args.FreeCompany = newFCString;
+                    var titleString = new SeString(new TextPayload($"《{title}》"));
+                    namePlateInfo->DisplayTitle.SetSeString(ModifySeString(titleString, uiColor));
+                }
+
+                var tag = MemoryHelper.ReadStringNullTerminated((IntPtr)battleChara->Character.FreeCompanyTag);
+                if (tag.Length > 0)
+                {
+                    var newFCString = ModifySeString(new SeString(new TextPayload($" «{tag}»")), uiColor);
+                    namePlateInfo->FcName.SetSeString(ModifySeString(newFCString, uiColor));
+                }
             }
 
             PluginLog.Debug("Overriding player nameplate for {name} (ObjectID {objectID})", name, objectID);
+            return original();
         }
 
         protected virtual void Dispose(bool disposing)
@@ -567,8 +586,8 @@ namespace FCNameColor
                 Framework.Update -= OnFrameworkUpdate;
                 ClientState.Login -= OnLogin;
 
-                xivCommonBase.Functions.NamePlates.OnUpdate -= NamePlates_OnUpdate;
-                xivCommonBase.Dispose();
+                updateNameplateHook.Disable();
+                updateNameplateHook.Dispose();
             }
             catch (Exception ex)
             {
