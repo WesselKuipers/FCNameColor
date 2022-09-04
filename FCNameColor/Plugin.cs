@@ -19,6 +19,7 @@ using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
 using Dalamud.IoC;
 using Dalamud.Logging;
+using Dalamud.Memory;
 using Dalamud.Plugin;
 using FCNameColor.Utils;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
@@ -49,7 +50,7 @@ namespace FCNameColor
         [PluginService] public static ObjectTable Objects { get; private set; }
         [PluginService] public static CommandManager Commands { get; private set; }
         [PluginService] public static Framework Framework { get; private set; }
-
+      
         private Dictionary<uint, string> WorldNames;
         private LodestoneClient lodestoneClient;
         private readonly FCNameColorProvider fcNameColorProvider;
@@ -473,7 +474,6 @@ namespace FCNameColor
             }
 
             var isLocalPlayer = ClientState?.LocalPlayer?.ObjectId == objectID;
-            var isPartyMember = GroupManager.Instance()->IsObjectIDInAlliance(objectID);
             var isInDuty = Condition[ConditionFlag.BoundByDuty56];
 
             if (isInDuty && isLocalPlayer)
@@ -492,7 +492,7 @@ namespace FCNameColor
                 return original();
             }
 
-            var name = Encoding.UTF8.GetString(gameObject->Name, 27).Trim('\0', ' ');
+            var name = MemoryHelper.ReadStringNullTerminated((IntPtr)gameObject->Name);
             if (config.IgnoredPlayers.ContainsKey(name))
             {
                 return original();
@@ -529,12 +529,19 @@ namespace FCNameColor
             {
                 var nameString = new SeString(new TextPayload(name));
                 namePlateInfo->Name.SetSeString(ModifySeString(nameString, uiColor));
+
+                var title = namePlateInfo->Title.ToString();
+                if (title.Length > 0)
+                {
+                    var titleString = new SeString(new TextPayload($"《{title}》"));
+                    namePlateInfo->DisplayTitle.SetSeString(ModifySeString(titleString, uiColor));
+                }
             }
 
-            var shouldReplaceName = !config.OnlyColorFCTag && !isPartyMember && !isLocalPlayer;
+            var shouldReplaceName = !config.OnlyColorFCTag && !isLocalPlayer;
             if (!isInDuty && !shouldReplaceName)
             {
-                var tag = Encoding.UTF8.GetString(battleChara->Character.FreeCompanyTag, 6).Trim('\0', ' ');
+                var tag = MemoryHelper.ReadStringNullTerminated((IntPtr)battleChara->Character.FreeCompanyTag);
                 if (tag.Length > 0)
                 {
                     var newFCString = ModifySeString(new SeString(new TextPayload($" «{tag}»")), uiColor);
@@ -548,14 +555,13 @@ namespace FCNameColor
                 namePlateInfo->Name.SetSeString(ModifySeString(nameString, uiColor));
 
                 var title = namePlateInfo->Title.ToString();
-                PluginLog.Debug("Title: {title}", title);
                 if (title.Length > 0)
                 {
                     var titleString = new SeString(new TextPayload($"《{title}》"));
                     namePlateInfo->DisplayTitle.SetSeString(ModifySeString(titleString, uiColor));
                 }
 
-                var tag = Encoding.UTF8.GetString(battleChara->Character.FreeCompanyTag, 6).Trim('\0', ' ');
+                var tag = MemoryHelper.ReadStringNullTerminated((IntPtr)battleChara->Character.FreeCompanyTag);
                 if (tag.Length > 0)
                 {
                     var newFCString = ModifySeString(new SeString(new TextPayload($" «{tag}»")), uiColor);
