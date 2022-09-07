@@ -481,6 +481,11 @@ namespace FCNameColor
                 return original();
             }
 
+            if (!isInDuty && config.OnlyDuties)
+            {
+                return original();
+            }
+
             if (!isInDuty && isLocalPlayer && !config.IncludeSelf)
             {
                 return original();

@@ -11,12 +11,44 @@ namespace FCNameColor
     {
         public int Version { get; set; } = 0;
 
+        /// <summary>
+        /// Whether the plugin should do anything at all.
+        /// </summary>
         public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// Whether the entire nameplate should be recoloured, or just the FC tag.
+        /// </summary>
         public bool OnlyColorFCTag { get; set; } = true;
+
+        /// <summary>
+        /// Whether your own FC tag should be recoloured.
+        /// </summary>
         public bool IncludeSelf { get; set; } = true;
+
+        /// <summary>
+        /// Whether nameplates should be recoloured inside duties.
+        /// </summary>
         public bool IncludeDuties { get; set; } = true;
-        public bool Glow { get; set; }
+
+        /// <summary>
+        /// Whether the plugin should only work inside duties.
+        /// </summary>
+        public bool OnlyDuties { get; set; } = false;
+
+        /// <summary>
+        /// Enable the glow effect on fonts.
+        /// </summary>
+        public bool Glow { get; set; } = false;
+
+        /// <summary>
+        /// The RGBA colour representing the currently selected colour.
+        /// </summary>
         public Vector4 Color { get; set; } = new(0.8f, 0.21568628f, 0.21568628f, 1.0f); // The same as UiColor 14.
+
+        /// <summary>
+        /// The ID of the selected colour.
+        /// </summary>
         public string UiColor { get; set; } = "14"; // A red-ish colour.
 
         /// <summary>
