@@ -161,6 +161,11 @@ namespace FCNameColor
                     configuration.Save();
                 }
 
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("This will only colour the FC tag instead of the entire name.");
+                }
+
                 var includeSelf = configuration.IncludeSelf;
                 if (ImGui.Checkbox("Include self", ref includeSelf))
                 {
@@ -176,6 +181,11 @@ namespace FCNameColor
                 var includeDuties = configuration.IncludeDuties;
                 if (ImGui.Checkbox("Include duties", ref includeDuties))
                 {
+                    if (!includeDuties)
+                    {
+                        configuration.OnlyDuties = false;
+                    }
+
                     configuration.IncludeDuties = includeDuties;
                     configuration.Save();
                 }
@@ -183,6 +193,24 @@ namespace FCNameColor
                 if (ImGui.IsItemHovered())
                 {
                     ImGui.SetTooltip("Will colour the entire names of FC members when inside a duty.");
+                }
+
+                ImGui.SameLine();
+                var onlyDuties = configuration.OnlyDuties;
+                if (ImGui.Checkbox("Only duties", ref onlyDuties))
+                {
+                    if (onlyDuties)
+                    {
+                        configuration.IncludeDuties = true;
+                    }
+                    
+                    configuration.OnlyDuties = onlyDuties;
+                    configuration.Save();
+                }
+
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Disable the plugin outside of duties. This helps with conflicts with other plugins.");
                 }
 
                 var glow = configuration.Glow;
