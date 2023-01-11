@@ -28,11 +28,15 @@ using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
+using static FCNameColor.Utils.Utils;
 using NetStone;
 using NetStone.Model.Parseables.FreeCompany.Members;
 using NetStone.Search.Character;
 using static FFXIVClientStructs.FFXIV.Client.UI.RaptureAtkModule;
 using Condition = Dalamud.Game.ClientState.Conditions.Condition;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
+using FCNameColor.Utils.GameConfig;
+using System.Collections;
 
 namespace FCNameColor
 {
@@ -50,13 +54,13 @@ namespace FCNameColor
         [PluginService] public static ObjectTable Objects { get; private set; }
         [PluginService] public static CommandManager Commands { get; private set; }
         [PluginService] public static Framework Framework { get; private set; }
-      
+
         private Dictionary<uint, string> WorldNames;
         private LodestoneClient lodestoneClient;
         private readonly FCNameColorProvider fcNameColorProvider;
         private PluginUI UI { get; }
         private bool loggingIn;
-        private readonly Timer timer = new() {Interval = 1000};
+        private readonly Timer timer = new() { Interval = 1000 };
         private List<FCMember> members;
         private bool initialized;
         private string playerName;
@@ -142,7 +146,7 @@ namespace FCNameColor
             fcNameColorProvider = new FCNameColorProvider(Pi, new FCNameColorAPI(config));
         }
 
-            private void OnCommand(string command, string args)
+        private void OnCommand(string command, string args)
         {
             UI.Visible = true;
         }
@@ -234,7 +238,8 @@ namespace FCNameColor
                     Group = group,
                     FC = new FC
                     {
-                        ID = id, Name = fc.Name,
+                        ID = id,
+                        Name = fc.Name,
                         Members = Array.Empty<FCMember>(),
                         World = fc.World,
                         LastUpdated = DateTime.Now
@@ -295,7 +300,7 @@ namespace FCNameColor
             }
 
             var newMembers = new List<FCMember>();
-            newMembers.AddRange(fcMemberResult.Members.Select(res => new FCMember {ID = res.Id, Name = res.Name}));
+            newMembers.AddRange(fcMemberResult.Members.Select(res => new FCMember { ID = res.Id, Name = res.Name }));
 
             // Fire off async requests for fetching members for each remaining page
             if (fcMemberResult.NumPages <= 1) return newMembers;
@@ -310,7 +315,7 @@ namespace FCNameColor
             await Task.WhenAll(taskList);
             taskList.ForEach(task =>
                 newMembers.AddRange(
-                    task.Result.Members.Select(res => new FCMember {ID = res.Id, Name = res.Name})));
+                    task.Result.Members.Select(res => new FCMember { ID = res.Id, Name = res.Name })));
 
             return newMembers;
         }
@@ -394,7 +399,9 @@ namespace FCNameColor
 
             var fc = new FC
             {
-                ID = player.FreeCompany.Id, Name = player.FreeCompany.Name, World = worldName,
+                ID = player.FreeCompany.Id,
+                Name = player.FreeCompany.Name,
+                World = worldName,
                 LastUpdated = DateTime.Now
             };
 
@@ -449,7 +456,7 @@ namespace FCNameColor
         private SeString ModifySeString(SeString content, string uiColor)
         {
             content.Payloads.Insert(0, new UIForegroundPayload(Convert.ToUInt16(uiColor)));
-            content.Payloads.Insert(1, new UIGlowPayload(config.Glow ? Convert.ToUInt16(uiColor) : (ushort) 0));
+            content.Payloads.Insert(1, new UIGlowPayload(config.Glow ? Convert.ToUInt16(uiColor) : (ushort)0));
             content.Payloads.Add(UIGlowPayload.UIGlowOff);
             content.Payloads.Add(UIForegroundPayload.UIForegroundOff);
             return content;
@@ -530,9 +537,24 @@ namespace FCNameColor
                 uiColor = group.UiColor;
             }
 
+            var status = battleChara->StatusManager.Owner->StatusFlags;
+            var isInParty = (status & (byte)StatusFlags.PartyMember) != 0;
+            var isInAlliance = (status & (byte)StatusFlags.AllianceMember) != 0;
+            // Hardcoded until https://github.com/goatcorp/Dalamud/issues/977 is fixed.
+            var isFriend = (status & 128) != 0;
+
+            // Everyone loves the triple ternary check...
+            var nameType = isInParty
+                ? ConfigOption.NamePlateNameTypeParty
+                : isInAlliance
+                  ? ConfigOption.NamePlateNameTypeAlliance
+                  : isFriend
+                    ? ConfigOption.NamePlateNameTypeFriend
+                    : ConfigOption.NamePlateNameTypeOther;
+
             if (isInDuty && config.IncludeDuties)
             {
-                var nameString = new SeString(new TextPayload(name));
+                var nameString = new SeString(new TextPayload(BuildPlayername(name, nameType)));
                 namePlateInfo->Name.SetSeString(ModifySeString(nameString, uiColor));
 
                 var title = namePlateInfo->Title.ToString();
@@ -556,7 +578,7 @@ namespace FCNameColor
 
             if (shouldReplaceName)
             {
-                var nameString = new SeString(new TextPayload(name));
+                var nameString = new SeString(new TextPayload(BuildPlayername(name, nameType)));
                 namePlateInfo->Name.SetSeString(ModifySeString(nameString, uiColor));
 
                 var title = namePlateInfo->Title.ToString();
