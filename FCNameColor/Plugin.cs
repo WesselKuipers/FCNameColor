@@ -597,7 +597,10 @@ namespace FCNameColor
                 }
             }
 
+#if DEBUG
             PluginLog.Verbose("Overriding player nameplate for {name} (ObjectID {objectID})", name, objectID);
+#endif
+
             return original();
         }
 
