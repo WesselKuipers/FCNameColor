@@ -546,12 +546,12 @@ namespace FCNameColor
 
             // Everyone loves the triple ternary check...
             var nameType = isInParty
-                ? ConfigOption.NamePlateNameTypeParty
-                : isInAlliance
-                  ? ConfigOption.NamePlateNameTypeAlliance
-                  : isFriend
-                    ? ConfigOption.NamePlateNameTypeFriend
-                    : ConfigOption.NamePlateNameTypeOther;
+              ? ConfigOption.NamePlateNameTypeParty
+              : isInAlliance
+                ? ConfigOption.NamePlateNameTypeAlliance
+                : isFriend
+                  ? ConfigOption.NamePlateNameTypeFriend
+                  : ConfigOption.NamePlateNameTypeOther;
 
             if (isInDuty && config.IncludeDuties)
             {
