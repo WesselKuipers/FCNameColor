@@ -126,7 +126,7 @@ namespace FCNameColor
 
             unsafe
             {
-                var npAddress = SigScanner.ScanText("40 53 55 56 41 56 48 81 EC ?? ?? ?? ?? 48 8B 84 24");
+                var npAddress = SigScanner.ScanText("40 55 56 57 41 56 48 81 EC ?? ?? ?? ?? 48 8B 84 24");
                 updateNameplateHook = Hook<UpdateNameplateDelegate>.FromAddress(npAddress, UpdateNameplatesDetour);
                 updateNameplateHook.Enable();
             }
