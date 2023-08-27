@@ -173,6 +173,11 @@ namespace FCNameColor
                     configuration.Save();
                 }
 
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("This will colour your own FC tag.");
+                }
+
                 var ignoreFriends = configuration.IgnoreFriends;
                 ImGui.SameLine();
                 if (ImGui.Checkbox("Ignore friends", ref ignoreFriends))
@@ -183,7 +188,7 @@ namespace FCNameColor
 
                 if (ImGui.IsItemHovered())
                 {
-                    ImGui.SetTooltip("This will colour your own FC tag.");
+                    ImGui.SetTooltip("Don't change the nameplates of friends.");
                 }
 
                 var includeDuties = configuration.IncludeDuties;
