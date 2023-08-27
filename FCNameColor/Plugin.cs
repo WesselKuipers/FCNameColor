@@ -504,12 +504,10 @@ namespace FCNameColor
                 return original();
             }
 
-            // Values taken from: https://github.com/SheepGoMeh/VisibilityPlugin/blob/master/Visibility/Enumerations.cs#L6
-            var status = battleChara->GetStatusManager->Owner->StatusFlags;
-            var isInParty = (status & 32) != 0;
-            var isInAlliance = (status & 64) != 0;
-            // Hardcoded until https://github.com/goatcorp/Dalamud/issues/977 is fixed.
-            var isFriend = (status & 128) != 0;
+            var owner = battleChara->GetStatusManager->Owner;
+            var isInParty = owner->IsPartyMember;
+            var isInAlliance = owner->IsAllianceMember;
+            var isFriend = owner->IsFriend;
 
             if (config.IgnoreFriends && isFriend)
             {
