@@ -27,6 +27,11 @@ namespace FCNameColor
         public bool IncludeSelf { get; set; } = true;
 
         /// <summary>
+        /// Whether friends should be recoloured as well.
+        /// </summary>
+        public bool IgnoreFriends { get; set; } = false;
+
+        /// <summary>
         /// Whether nameplates should be recoloured inside duties.
         /// </summary>
         public bool IncludeDuties { get; set; } = true;

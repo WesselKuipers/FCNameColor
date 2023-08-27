@@ -499,7 +499,19 @@ namespace FCNameColor
             }
 
             // Skip any player who is dead, colouring the name of dead characters makes them harder to recognize.
-            if (battleChara->Character.Health == 0)
+            if (battleChara->Character.CharacterData.Health == 0)
+            {
+                return original();
+            }
+
+            // Values taken from: https://github.com/SheepGoMeh/VisibilityPlugin/blob/master/Visibility/Enumerations.cs#L6
+            var status = battleChara->GetStatusManager->Owner->StatusFlags;
+            var isInParty = (status & 32) != 0;
+            var isInAlliance = (status & 64) != 0;
+            // Hardcoded until https://github.com/goatcorp/Dalamud/issues/977 is fixed.
+            var isFriend = (status & 128) != 0;
+
+            if (config.IgnoreFriends && isFriend)
             {
                 return original();
             }
@@ -536,13 +548,6 @@ namespace FCNameColor
                 color = group.Color;
                 uiColor = group.UiColor;
             }
-
-            // Values taken from: https://github.com/SheepGoMeh/VisibilityPlugin/blob/master/Visibility/Enumerations.cs#L6
-            var status = battleChara->StatusManager.Owner->StatusFlags;
-            var isInParty = (status & 32) != 0;
-            var isInAlliance = (status & 64) != 0;
-            // Hardcoded until https://github.com/goatcorp/Dalamud/issues/977 is fixed.
-            var isFriend = (status & 128) != 0;
 
             // Everyone loves the triple ternary check...
             var nameType = isInParty
