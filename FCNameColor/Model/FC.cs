@@ -61,7 +61,7 @@ namespace FCNameColor
         /// <summary>
         /// The FC this config applies to.
         /// </summary>
-        public FC FC;
+        public string ID;
 
         /// <summary>
         /// The name of the group this FC is assigned to.

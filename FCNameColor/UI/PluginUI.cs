@@ -119,6 +119,7 @@ namespace FCNameColor
                     return;
                 }
 
+                var playerKey = plugin.PlayerKey;
                 var enabled = configuration.Enabled;
                 if (ImGui.Checkbox("Enabled", ref enabled))
                 {
@@ -274,13 +275,13 @@ namespace FCNameColor
                 {
                     PluginLog.Debug($"Deleting group {currentGroup}");
                     configuration.Groups.Remove(currentGroup);
-                    if (configuration.AdditionalFCs.ContainsKey(plugin.PlayerKey))
+                    if (configuration.FCConfigs.ContainsKey(playerKey))
                     {
-                        for (var i = 0; i < configuration.AdditionalFCs[plugin.PlayerKey].Count; i++)
+                        for (var i = 0; i < configuration.FCConfigs[playerKey].Count; i++)
                         {
-                            if (configuration.AdditionalFCs[plugin.PlayerKey][i].Group == currentGroup)
+                            if (configuration.FCConfigs[playerKey][i].Group == currentGroup)
                             {
-                                configuration.AdditionalFCs[plugin.PlayerKey][i].Group = "Other FC";
+                                configuration.FCConfigs[playerKey][i].Group = "Other FC";
                             }
                         }
                     }
@@ -341,7 +342,7 @@ namespace FCNameColor
                 ImGui.SameLine();
                 ImGui.TextColored(editingFC ? configuration.Color : configuration.Groups[currentGroup].Color,
                     editingFC
-                        ? plugin?.FC.Name ?? "your FC"
+                        ? plugin?.FC.Value.Name ?? "your FC"
                         : currentGroup);
                 ImGui.ColorButton("Nameplate color. Click on a color below to select a new one.",
                     editingFC ? configuration.Color : configuration.Groups[currentGroup].Color);
@@ -425,8 +426,8 @@ namespace FCNameColor
             {
                 if (ImGui.Button("Clear & Retry"))
                 {
-                    configuration.PlayerFCs = new Dictionary<string, FC>();
-                    configuration.PlayerIDs = new Dictionary<string, string>();
+                    configuration.PlayerFCs = new();
+                    configuration.PlayerIDs = new();
                     configuration.Save();
                     showAddAdditionalFC = false;
                     plugin.SearchingFC = false;
@@ -504,10 +505,9 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                 ImGui.End();
             }
 
-            if (!configuration.AdditionalFCs.TryGetValue(plugin.PlayerKey, out var additionalFCs))
+            if (!configuration.FCConfigs.ContainsKey(plugin.PlayerKey))
             {
-                additionalFCs = new List<FCConfig>();
-                configuration.AdditionalFCs.TryAdd(plugin.PlayerKey, additionalFCs);
+                configuration.FCConfigs.Add(plugin.PlayerKey, new());
             }
 
             if (showAdditionalFCConfig)
@@ -528,20 +528,22 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
 
                 ImGui.Separator();
 
-                foreach (var fc in additionalFCs.ToList())
+                foreach (var fcConfigEntry in configuration.FCConfigs[plugin.PlayerKey].Select((value, index) => new { index, value }))
                 {
-                    ImGui.PushID(fc.FC.ID);
+                    var fcConfig = fcConfigEntry.value;
+                    var index = fcConfigEntry.index;
+                    var fc = configuration.FCs[fcConfig.ID];
+                    ImGui.PushID(fcConfig.ID);
                     ImGui.Text("Settings for");
                     ImGui.SameLine();
-                    ImGui.TextColored(configuration.Groups[fc.Group].Color, fc.FC.Name);
-                    ImGui.ColorButton("", configuration.Groups[fc.Group].Color);
+                    ImGui.TextColored(configuration.Groups[fcConfig.Group].Color, fc.Name);
+                    ImGui.ColorButton("", configuration.Groups[fcConfig.Group].Color);
                     ImGui.SameLine();
                     var groups = configuration.Groups.Keys.ToArray();
-                    var groupIndex = Array.IndexOf(groups, fc.Group);
+                    var groupIndex = Array.IndexOf(groups, fcConfig.Group);
                     if (ImGui.Combo("###AdditionalFCGroup", ref groupIndex, groups, groups.Length))
                     {
-                        configuration.AdditionalFCs[plugin.PlayerKey][additionalFCs.IndexOf(fc)]
-                            .Group = groups[groupIndex];
+                        configuration.FCConfigs[plugin.PlayerKey][index].Group = groups[groupIndex];
                         configuration.Save();
                     }
 
@@ -549,20 +551,20 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                     if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, 1f),
                             new Vector4(1f, 0, 0, 1f), new Vector4(0.9f, 0, 0, 1f)))
                     {
-                        PluginLog.Debug($"Deleting additional FC {fc.FC.Name}");
-                        configuration.AdditionalFCs[plugin.PlayerKey].Remove(fc);
+                        PluginLog.Debug($"Deleting additional FC {fc.Name}");
+                        configuration.FCConfigs[plugin.PlayerKey].Remove(fcConfig);
                         configuration.Save();
                     }
 
                     if (ImGui.IsItemHovered())
                     {
-                        ImGui.SetTooltip($"Delete {fc.FC.Name}.");
+                        ImGui.SetTooltip($"Delete {fc.Name}.");
                     }
 
                     ImGui.PopID();
                 }
 
-                if (additionalFCs.Count == 0)
+                if (configuration.FCConfigs[plugin.PlayerKey].Count == 0)
                 {
                     ImGui.Text("There are currently no additional FCs.");
                 }
@@ -573,7 +575,7 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                 if (showAddAdditionalFC || plugin.SearchingFC)
                 {
                     ImGui.Begin("FC Name Color Config - Adding Additional FC", ref showAddAdditionalFC,
-                        ImGuiWindowFlags.AlwaysAutoResize);
+                        ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.AlwaysVerticalScrollbar); // TODO: Check if this actually works when there's a large amount
                     ImGui.Spacing();
 
                     ImGui.Text("Please enter the lodestone URL of the FC.");
@@ -613,7 +615,7 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                             {
                                 if (configuration.PlayerFCs.TryGetValue(currentPlayerID, out var playerFC))
                                 {
-                                    if (playerFC.ID == id)
+                                    if (playerFC == id)
                                     {
                                         ImGui.OpenPopup("###SameFC");
                                         shouldContinue = false;
@@ -623,7 +625,7 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
 
                             if (shouldContinue)
                             {
-                                if (additionalFCs.Exists(fc => fc.FC.ID == id))
+                                if (configuration.FCConfigs[plugin.PlayerKey].Exists(fc => fc.ID == id))
                                 {
                                     ImGui.OpenPopup("###AddFCDupe");
                                 }
@@ -684,9 +686,11 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
         {
             var fcMembers = new List<FCMember>();
             var playersFCs = configuration.PlayerFCs;
-            foreach (var playerFC in playersFCs)
+            // TODO: Should this fetch *every* tracked FC or just the player's FCs?
+            foreach (var playerFCID in playersFCs)
             {
-                fcMembers.AddRange(playerFC.Value.Members);
+                var exists = configuration.FCs.TryGetValue(playerFCID.Value, out var fc);
+                fcMembers.AddRange(fc.Members);
             }
 
             fcMembers = fcMembers.Distinct().OrderBy(member => member.Name).ToList();

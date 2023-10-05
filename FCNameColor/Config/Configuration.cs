@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Configuration;
 using Dalamud.Plugin;
@@ -11,6 +12,7 @@ namespace FCNameColor
     {
         public int Version { get; set; } = 0;
 
+        #region User Settings
         /// <summary>
         /// Whether the plugin should do anything at all.
         /// </summary>
@@ -55,7 +57,9 @@ namespace FCNameColor
         /// The ID of the selected colour.
         /// </summary>
         public string UiColor { get; set; } = "14"; // A red-ish colour.
+        #endregion
 
+        #region Plugin Data
         /// <summary>
         /// A mapping of character Name@Server and character IDs
         /// </summary>
@@ -64,7 +68,7 @@ namespace FCNameColor
         /// <summary>
         /// A mapping of Player ID and their FC’s ID
         /// </summary>
-        public Dictionary<string, FC> PlayerFCs { get; set; } = new();
+        public Dictionary<string, string> PlayerFCs { get; set; } = new();
 
         /// <summary>
         /// A mapping of player IDs and player names to ignore processing of.
@@ -77,26 +81,61 @@ namespace FCNameColor
         public Dictionary<string, Group> Groups { get; set; } = new()
         {
             {
+                "Own FC", new Group
+                { 
+                    UiColor = "14", // A red-ish colour.
+                    Color = new Vector4(0.8f, 0.21568628f, 0.21568628f, 1.0f) // The same as UiColor 14.
+                }
+            },
+            {
                 "Other FC", new Group
                 {
-                    UiColor = "52", Color = new Vector4(0.07450981f,
-                        0.8f,
-                        0.6392157f,
-                        1f)
+                    UiColor = "52",
+                    Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1f) // The same as UiColor 52.
                 }
             }
         };
 
         /// <summary>
-        /// A list of additional FCs to track, mapped by player name.
+        /// A list of FC configs, mapped by player name.
         /// </summary>
-        public Dictionary<string, List<FCConfig>> AdditionalFCs { get; set; } = new();
+        public Dictionary<string, List<FCConfig>> FCConfigs { get; set; } = new();
+
+        /// <summary>
+        /// Every FC currently tracked by the plugin.
+        /// </summary>
+        public Dictionary<string, FC> FCs { get; set; } = new();
+        #endregion
 
         [NonSerialized] private DalamudPluginInterface pluginInterface;
 
         public void Initialize(DalamudPluginInterface pluginInterface)
         {
             this.pluginInterface = pluginInterface;
+        }
+
+        public void MigrateFromV0(ConfigurationV0 old)
+        {
+            var allFCs = new Dictionary<string, FC>();
+            foreach (var fc in old.PlayerFCs)
+            {
+                allFCs.Add(fc.Value.ID, fc.Value);
+            }
+            foreach (var additionalFCList in old.AdditionalFCs.Values)
+            {
+                foreach (var fc in additionalFCList)
+                {
+                    if (!allFCs.ContainsKey(fc.ID))
+                    {
+                        //allFCs.Add(fc.ID, fc.f);
+                    }
+                }
+            }
+
+            Version = 2;
+
+
+            Save();
         }
 
         public void Save()
