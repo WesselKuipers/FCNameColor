@@ -24,7 +24,6 @@ using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
-using static FCNameColor.Utils.Utils;
 using NetStone;
 using NetStone.Model.Parseables.FreeCompany.Members;
 using NetStone.Search.Character;
@@ -41,7 +40,7 @@ namespace FCNameColor
         private readonly Configuration config;
 
         [PluginService] public static DalamudPluginInterface Pi { get; private set; }
-        [PluginService] public static SigScanner SigScanner { get; private set; }
+        [PluginService] public static ISigScanner SigScanner { get; private set; }
         [PluginService] public static IClientState ClientState { get; private set; }
         [PluginService] public static IChatGui Chat { get; private set; }
         [PluginService] public static ICondition Condition { get; private set; }
@@ -141,7 +140,7 @@ namespace FCNameColor
             Pi.UiBuilder.Draw += DrawUI;
             Pi.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            fcNameColorProvider = new FCNameColorProvider(Pi, new FCNameColorAPI(config));
+            fcNameColorProvider = new FCNameColorProvider(Pi, new FCNameColorAPI(config, PluginLog));
         }
 
         private void OnCommand(string command, string args)
@@ -595,7 +594,7 @@ namespace FCNameColor
 
             if (isInDuty && config.IncludeDuties)
             {
-                var nameString = new SeString(new TextPayload(BuildPlayername(name, nameType)));
+                var nameString = new SeString(new TextPayload(name));
                 namePlateInfo->Name.SetSeString(ModifySeString(nameString, uiColor));
 
                 var title = namePlateInfo->Title.ToString();
@@ -619,7 +618,7 @@ namespace FCNameColor
 
             if (shouldReplaceName)
             {
-                var nameString = new SeString(new TextPayload(BuildPlayername(name, nameType)));
+                var nameString = new SeString(new TextPayload(name));
                 namePlateInfo->Name.SetSeString(ModifySeString(nameString, uiColor));
 
                 var title = namePlateInfo->Title.ToString();

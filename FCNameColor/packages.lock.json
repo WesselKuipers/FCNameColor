@@ -13,11 +13,6 @@
         "resolved": "1.11.46",
         "contentHash": "dLMn4EVfJBHWmWK4Uh0XGD76FPLHI0qr2Tm0s1m/xmgiHb1JUb9zB8AzO8HtrkBBlMN6JfCUBYddhqC0hZNR+g=="
       },
-      "JetBrains.Annotations": {
-        "type": "Transitive",
-        "resolved": "2022.1.0",
-        "contentHash": "ASfpoFJxiRsC9Xc4TWuPM41Zb/gl64xwfMOhnOZ3RnVWGYIZchjpWQV5zshJgoc/ZxVtgjaF7b577lURj7E6ig=="
-      },
       "Karashiiro.HtmlAgilityPack.CssSelectors.NetCoreFork": {
         "type": "Transitive",
         "resolved": "0.0.2",
@@ -28,16 +23,15 @@
       },
       "Newtonsoft.Json": {
         "type": "Transitive",
-        "resolved": "13.0.1",
-        "contentHash": "ppPFpBcvxdsfUonNcvITKqLl3bqxWbDCZIzDWHzjpdAHRFfZe0Dw9HmA0+za13IdyrgJwpkDTDA9fHaxOrt20A=="
+        "resolved": "13.0.3",
+        "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
       },
       "netstone": {
         "type": "Project",
         "dependencies": {
           "HtmlAgilityPack": "[1.11.46, )",
-          "JetBrains.Annotations": "[2022.1.0, )",
           "Karashiiro.HtmlAgilityPack.CssSelectors.NetCoreFork": "[0.0.2, )",
-          "Newtonsoft.Json": "[13.0.1, )"
+          "Newtonsoft.Json": "[13.0.3, )"
         }
       }
     }

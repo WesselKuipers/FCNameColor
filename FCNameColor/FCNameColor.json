@@ -9,7 +9,7 @@
   "RepoUrl": "https://github.com/WesselKuipers/FCNameColor",
   "IconUrl": "https://github.com/WesselKuipers/FCNameColor/raw/main/images/icon.png",
   "Tags": [ "nameplate", "FC", "name", "colors" ],
-  "DalamudApiLevel": 8,
+  "DalamudApiLevel": 9,
   "LoadPriority": 0,
   "FeedbackMessage": "Please include your character’s name and server if you’re reporting a bug or issue. This helps a lot with the troubleshooting process."
 }

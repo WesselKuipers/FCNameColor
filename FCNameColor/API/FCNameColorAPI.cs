@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Logging;
+using Dalamud.Plugin.Services;
 
 namespace FCNameColor
 {
@@ -9,10 +10,12 @@ namespace FCNameColor
     {
         private readonly bool initialized;
         private readonly Configuration configuration;
+        private readonly IPluginLog PluginLog;
         
-        public FCNameColorAPI(Configuration configuration)
+        public FCNameColorAPI(Configuration configuration, IPluginLog pluginLog)
         {
             this.configuration = configuration;
+            this.PluginLog = pluginLog;
             this.initialized = true;
         }
 
@@ -27,21 +30,21 @@ namespace FCNameColor
         public IEnumerable<string> GetPlayerFCs()
         {
             this.CheckInitialized();
-            return this.configuration.PlayerFCs.Distinct().ToList().Select(fc => $"{fc.Key} {fc.Value.ID} {fc.Value.Name}");
+            return this.configuration.PlayerFCs.Distinct().ToList().Select(fc => $"{fc.Key} {fc.Value} {this.configuration.FCs[fc.Value].Name}");
         }
 
         public IEnumerable<string> GetFCMembers(string id)
         {
             this.CheckInitialized();
             var fcMembers = new List<string>();
-            var fc = this.configuration.PlayerFCs.FirstOrDefault(pair => pair.Value.ID.Equals(id));
+            var fc = this.configuration.FCs.FirstOrDefault(pair => pair.Value.Equals(id));
             try
             {
                 fcMembers.AddRange(fc.Value.Members.Select(member => $"{member.ID} {member.Name}"));
             }
             catch (Exception)
             {
-                PluginLog.LogError("Free Company ID not found.");
+                PluginLog.Error("Free Company ID not found.");
             }
 
             return fcMembers.Distinct();
@@ -74,7 +77,7 @@ namespace FCNameColor
             }
             catch (Exception)
             {
-                PluginLog.LogError("Ignored Player ID not found.");
+                PluginLog.Error("Ignored Player ID not found.");
             }
         }
 
