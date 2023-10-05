@@ -465,7 +465,7 @@ namespace FCNameColor
                 async void ScheduleFCUpdates()
                 {
                     PluginLog.Debug("Scheduling additional FC updates");
-                    foreach (var fcGroup in fcGroups)
+                    foreach (var fcGroup in fcGroups.Where(f => f.Key != FC.Value.ID))
                     {
                         var additionalFCFetched = config.FCs.TryGetValue(fcGroup.Key, out var additionalFC);
                         if (additionalFCFetched && (DateTime.Now - additionalFC.LastUpdated).TotalHours < 1)
@@ -481,6 +481,7 @@ namespace FCNameColor
                         PluginLog.Debug($"Updating FC {fcGroup.Key}");
                         await UpdateFCMembers(fcGroup.Key);
                     }
+                    PluginLog.Debug("Finished loading all FC data.");
                 }
 
                 skipCache.Clear();
