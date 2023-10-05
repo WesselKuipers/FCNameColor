@@ -9,7 +9,9 @@ using Dalamud.Game.ClientState;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
+using Dalamud.Interface.Utility;
 using Dalamud.Logging;
+using Dalamud.Plugin.Services;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 
@@ -38,7 +40,7 @@ namespace FCNameColor
         private bool showAddAdditionalFC;
         private string fcUrl = "";
         private FCMember currentIgnoredPlayer;
-        private readonly ClientState clientState;
+        private readonly IClientState clientState;
         private bool editingFC = true;
         private string currentGroup;
 
@@ -56,7 +58,7 @@ namespace FCNameColor
             set => visible = value;
         }
 
-        public PluginUI(Configuration config, DataManager data, Plugin plugin, ClientState clientState)
+        public PluginUI(Configuration config, IDataManager data, Plugin plugin, IClientState clientState)
         {
             configuration = config;
             this.clientState = clientState;

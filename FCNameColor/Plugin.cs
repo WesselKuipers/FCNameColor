@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 using Dalamud.Data;
@@ -10,8 +9,6 @@ using Dalamud.Game;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game.ClientState.Objects.Enums;
-using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.Game.Text.SeStringHandling;
@@ -23,7 +20,6 @@ using Dalamud.Memory;
 using Dalamud.Plugin;
 using FCNameColor.Utils;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
-using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -33,10 +29,8 @@ using NetStone;
 using NetStone.Model.Parseables.FreeCompany.Members;
 using NetStone.Search.Character;
 using static FFXIVClientStructs.FFXIV.Client.UI.RaptureAtkModule;
-using Condition = Dalamud.Game.ClientState.Conditions.Condition;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
-using FCNameColor.Utils.GameConfig;
-using System.Collections;
+using Dalamud.Plugin.Services;
 
 namespace FCNameColor
 {
@@ -48,12 +42,14 @@ namespace FCNameColor
 
         [PluginService] public static DalamudPluginInterface Pi { get; private set; }
         [PluginService] public static SigScanner SigScanner { get; private set; }
-        [PluginService] public static ClientState ClientState { get; private set; }
-        [PluginService] public static ChatGui Chat { get; private set; }
-        [PluginService] public static Condition Condition { get; private set; }
-        [PluginService] public static ObjectTable Objects { get; private set; }
-        [PluginService] public static CommandManager Commands { get; private set; }
-        [PluginService] public static Framework Framework { get; private set; }
+        [PluginService] public static IClientState ClientState { get; private set; }
+        [PluginService] public static IChatGui Chat { get; private set; }
+        [PluginService] public static ICondition Condition { get; private set; }
+        [PluginService] public static IObjectTable Objects { get; private set; }
+        [PluginService] public static ICommandManager Commands { get; private set; }
+        [PluginService] public static IFramework Framework { get; private set; }
+        [PluginService] public static IGameInteropProvider GameInteropProvider { get; private set; }
+        [PluginService] public static IPluginLog PluginLog { get; private set; }
 
         private Dictionary<uint, string> WorldNames;
         private LodestoneClient lodestoneClient;
@@ -81,7 +77,7 @@ namespace FCNameColor
         public bool SearchingFC;
         public string SearchingFCError = "";
 
-        public Plugin(DataManager dataManager)
+        public Plugin(IDataManager dataManager)
         {
             config = Pi.GetPluginConfig() as Configuration;
             timer.Elapsed += delegate
@@ -129,7 +125,7 @@ namespace FCNameColor
             unsafe
             {
                 var npAddress = SigScanner.ScanText("40 55 56 57 41 56 48 81 EC ?? ?? ?? ?? 48 8B 84 24");
-                updateNameplateHook = Hook<UpdateNameplateDelegate>.FromAddress(npAddress, UpdateNameplatesDetour);
+                updateNameplateHook = GameInteropProvider.HookFromAddress<UpdateNameplateDelegate>(npAddress, UpdateNameplatesDetour);
                 updateNameplateHook.Enable();
             }
 
@@ -158,7 +154,7 @@ namespace FCNameColor
             UI.Visible = true;
         }
 
-        private void OnLogin(object sender, EventArgs e)
+        private void OnLogin()
         {
             // LocalPlayer is still null at this point, so we just set a flag that indicates we're logging in.
             loggingIn = true;
@@ -167,7 +163,7 @@ namespace FCNameColor
             TrackedFCs = new List<FC>();
         }
 
-        private void OnFrameworkUpdate(Framework framework)
+        private void OnFrameworkUpdate(IFramework framework)
         {
             if (ClientState.LocalPlayer == null)
             {
@@ -506,7 +502,7 @@ namespace FCNameColor
         private unsafe void* UpdateNameplatesDetour(RaptureAtkModule* raptureAtkModule, NamePlateInfo* namePlateInfo, NumberArrayData* numArray, StringArrayData* stringArray, GameObject* gameObject, int numArrayIndex, int stringArrayIndex)
         {
             var original = () => updateNameplateHook.Original(raptureAtkModule, namePlateInfo, numArray, stringArray, gameObject, numArrayIndex, stringArrayIndex);
-            if (!config.Enabled || !FC.HasValue || FC?.Members == null || FC?.Members.Length == 0 || ClientState.IsPvP)
+            if (!config.Enabled || !FC.HasValue || FC?.Members == null || FC?.Members.Length == 0 || ClientState.IsPvPExcludingDen)
             {
                 return original();
             }
