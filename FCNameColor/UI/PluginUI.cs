@@ -397,6 +397,11 @@ namespace FCNameColor
                 showIgnoreList = !showIgnoreList;
             }
 
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Select which players shouldn’t be affected.");
+            }
+
             ImGui.SameLine();
             if (ImGui.Button("FC management"))
             {
