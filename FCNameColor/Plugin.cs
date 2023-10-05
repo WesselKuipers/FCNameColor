@@ -30,6 +30,7 @@ using NetStone.Search.Character;
 using static FFXIVClientStructs.FFXIV.Client.UI.RaptureAtkModule;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
 
 namespace FCNameColor
 {
@@ -71,6 +72,7 @@ namespace FCNameColor
         public bool NotInFC;
         public bool Error;
         public FC? FC;
+        public Group FCGroup;
         public List<FC> TrackedFCs = new();
         public string PlayerKey;
         public bool SearchingFC;
@@ -128,7 +130,7 @@ namespace FCNameColor
                 updateNameplateHook.Enable();
             }
 
-            UI = new PluginUI(config, dataManager, this, ClientState);
+            UI = new PluginUI(config, dataManager, this, ClientState, PluginLog);
 
             Commands.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
@@ -215,11 +217,10 @@ namespace FCNameColor
             timer.Elapsed += OnFinish;
         }
 
-        public async Task<FCConfig> SearchFC(string id, string group)
+        public async Task<bool> SearchFC(string id, string group)
         {
             SearchingFC = true;
             lodestoneClient ??= await LodestoneClient.GetClientAsync();
-            FCConfig result = null;
             try
             {
                 var fc = await lodestoneClient.GetFreeCompany(id);
@@ -228,23 +229,15 @@ namespace FCNameColor
                 {
                     SearchingFCError = "FC could not be found, please make sure it exists.";
                     SearchingFC = false;
-                    return null;
+                    return false;
                 }
 
-                result = new FCConfig
+                if (!config.FCGroups.ContainsKey(PlayerKey))
                 {
-                    Group = group,
-                    ID = fc.Id,
-                };
-
-                var existingConfig = config.FCConfigs.ContainsKey(PlayerKey);
-                if (!existingConfig)
-                {
-                    config.FCConfigs.Add(PlayerKey, new List<FCConfig>() { result });
-                } else
-                {
-                    config.FCConfigs[PlayerKey].Add(result);
+                    config.FCGroups.Add(PlayerKey, new());
                 }
+
+                config.FCGroups[PlayerKey][id] = group;
 
                 config.Save();
                 SearchingFC = false;
@@ -257,23 +250,17 @@ namespace FCNameColor
             {
                 SearchingFC = false;
                 SearchingFCError = "Something wrong when fetching the FC. Is Lodestone down?";
+                return false;
             }
 
-            return result;
+            return true;
         }
 
         private async Task UpdateFCMembers(string id)
         {
-            var configs = config.FCConfigs[PlayerKey];
-            var index = configs.FindIndex(f => f.ID == id);
-            if (index < 0)
-            {
-                return;
-            }
-
             try
             {
-                var fcExists = config.FCs.TryGetValue(configs[index].ID, out var fc);
+                var fcExists = config.FCs.TryGetValue(id, out var fc);
                 if (!fcExists)
                 {
                     var fetchedFC = await lodestoneClient.GetFreeCompany(id);
@@ -288,6 +275,16 @@ namespace FCNameColor
                 var m = await FetchFCMembers(id);
                 fc.Members = m.ToArray();
                 config.FCs[fc.ID] = fc;
+                
+                var trackedFCIndex = TrackedFCs.FindIndex(f => fc.ID == f.ID);
+                if (trackedFCIndex >= 0)
+                {
+                    TrackedFCs[trackedFCIndex] = fc;
+                } else
+                {
+                    TrackedFCs.Add(fc);
+                }
+
                 config.Save();
                 PluginLog.Debug("Finished fetching FC members for {fc}. Fetched {members} members.", fc.Name, m.Count);
             }
@@ -354,16 +351,16 @@ namespace FCNameColor
             lodestoneClient ??= await LodestoneClient.GetClientAsync();
 
             PluginLog.Debug($"Fetching data for {PlayerKey}");
-            if (!config.FCConfigs.ContainsKey(PlayerKey))
+            if (!config.FCGroups.ContainsKey(PlayerKey))
             {
-                config.FCConfigs.Add(PlayerKey, new List<FCConfig>());
-            } else
+                config.FCGroups.Add(PlayerKey, new());
+            }
+
             {
                 var trackedFCs = new List<FC>();
-                var fcConfigs = config.FCConfigs[PlayerKey];
-                foreach (var fcConfig in fcConfigs)
+                foreach (var fcConfig in config.FCGroups[PlayerKey])
                 {
-                    var foundTrackedFc = config.FCs.TryGetValue(fcConfig.ID, out var trackedFC);
+                    var foundTrackedFc = config.FCs.TryGetValue(fcConfig.Key, out var trackedFC);
                     if (foundTrackedFc)
                     {
                         trackedFCs.Add(trackedFC);
@@ -379,7 +376,6 @@ namespace FCNameColor
             }
 
             config.PlayerIDs.TryGetValue(PlayerKey, out var playerId);
-
             if (string.IsNullOrEmpty(playerId))
             {
                 PluginLog.Debug("Fetching character ID");
@@ -399,20 +395,18 @@ namespace FCNameColor
                 }
 
                 config.PlayerIDs[PlayerKey] = playerId;
+                config.Save();
             }
 
-            config.PlayerFCs.TryGetValue(playerId, out var cachedFCId);
-            var cachedFCFetched = config.FCs.TryGetValue(cachedFCId, out var cachedFC);
-            FC = cachedFC;
-            if (cachedFCFetched)
+            var cachedFCEXists = config.PlayerFCs.TryGetValue(playerId, out var cachedFCId);
+            if (cachedFCEXists)
             {
-                PluginLog.Debug($"Loaded {cachedFC.Members.Length} cached FC members");
-            }
-
-            if (!config.FCConfigs[PlayerKey].Any(f => f.ID == cachedFC.ID))
-            {
-                PluginLog.Debug($"Added missing FC Config for own FC.");
-                config.FCConfigs[PlayerKey].Add(new FCConfig() { ID = cachedFC.ID, Group = "Own FC" });
+                var cachedFCFetched = config.FCs.TryGetValue(cachedFCId, out var cachedFC);
+                FC = cachedFC;
+                if (cachedFCFetched)
+                {
+                    PluginLog.Debug($"Loaded {cachedFC.Members.Length} cached FC members");
+                }
             }
 
             PluginLog.Debug("Fetching FC ID via character page");
@@ -425,46 +419,55 @@ namespace FCNameColor
                 return;
             }
 
-            if (player.FreeCompany == null)
+            if (player.FreeCompany.Name == "")
             {
                 PluginLog.Debug("Player is not in an FC.");
                 NotInFC = true;
-                return;
             }
-
-            var fc = new FC
-            {
-                ID = player.FreeCompany.Id,
-                Name = player.FreeCompany.Name,
-                World = worldName,
-                LastUpdated = DateTime.Now
-            };
 
             try
             {
-                var newMembers = await FetchFCMembers(fc.ID);
-                fc.Members = newMembers.ToArray();
-                config.PlayerFCs[playerId] = fc.ID;
-                config.FCs[fc.ID] = fc;
-                config.Save();
-                Loading = false;
-                PluginLog.Debug($"Finished fetching data. Fetched {fc.Members.Length} members.");
-                FC = fc;
+                if (!NotInFC)
+                {
+                    var fc = new FC
+                    {
+                        ID = player.FreeCompany.Id,
+                        Name = player.FreeCompany.Name,
+                        World = worldName,
+                        LastUpdated = DateTime.Now
+                    };
+
+                    var newMembers = await FetchFCMembers(fc.ID);
+                    fc.Members = newMembers.ToArray();
+                    config.PlayerFCs[playerId] = fc.ID;
+                    config.FCs[fc.ID] = fc;
+                    PluginLog.Debug($"Finished fetching data. Fetched {fc.Members.Length} members.");
+                    FC = fc;
+
+                    if (!config.FCGroups[PlayerKey].ContainsKey(fc.ID))
+                    {
+                        PluginLog.Debug($"Added missing FC Config for own FC.");
+                        config.FCGroups[PlayerKey][fc.ID] = "Default";
+                    }
+                }
 
                 if (FirstTime)
                 {
-                    Chat.Print($"[FCNameColor]: First-time setup finished. Fetched {fc.Members.Length} members.");
+                    Chat.Print($"[FCNameColor]: First-time setup finished.");
                     FirstTime = false;
                 }
 
-                var fcConfigs = config.FCConfigs[PlayerKey];
+                config.Save();
+                Loading = false;
+
+                var fcGroups = config.FCGroups[PlayerKey];
 
                 async void ScheduleFCUpdates()
                 {
                     PluginLog.Debug("Scheduling additional FC updates");
-                    foreach (var fcConfig in fcConfigs.ToList())
+                    foreach (var fcGroup in fcGroups)
                     {
-                        var additionalFCFetched = config.FCs.TryGetValue(fcConfig.ID, out var additionalFC);
+                        var additionalFCFetched = config.FCs.TryGetValue(fcGroup.Key, out var additionalFC);
                         if (additionalFCFetched && (DateTime.Now - additionalFC.LastUpdated).TotalHours < 1)
                         {
                             PluginLog.Debug(
@@ -472,11 +475,11 @@ namespace FCNameColor
                             continue;
                         }
 
-                        PluginLog.Debug($"Waiting 30 seconds before updating FC {fcConfig.ID}");
+                        PluginLog.Debug($"Waiting 30 seconds before updating FC {fcGroup.Key}");
                         await Task.Delay(30000);
 
-                        PluginLog.Debug($"Updating FC {fcConfig.ID}");
-                        await UpdateFCMembers(fcConfig.ID);
+                        PluginLog.Debug($"Updating FC {fcGroup.Key}");
+                        await UpdateFCMembers(fcGroup.Key);
                     }
                 }
 
@@ -501,7 +504,7 @@ namespace FCNameColor
         private unsafe void* UpdateNameplatesDetour(RaptureAtkModule* raptureAtkModule, NamePlateInfo* namePlateInfo, NumberArrayData* numArray, StringArrayData* stringArray, GameObject* gameObject, int numArrayIndex, int stringArrayIndex)
         {
             var original = () => updateNameplateHook.Original(raptureAtkModule, namePlateInfo, numArray, stringArray, gameObject, numArrayIndex, stringArrayIndex);
-            if (!config.Enabled || !FC.HasValue || FC?.Members == null || FC?.Members.Length == 0 || ClientState.IsPvPExcludingDen)
+            if (!config.Enabled || !NotInFC && (!FC.HasValue || FC?.Members == null || FC?.Members.Length == 0) || ClientState.IsPvPExcludingDen)
             {
                 return original();
             }
@@ -557,11 +560,11 @@ namespace FCNameColor
             }
 
             var world = WorldNames[battleChara->Character.HomeWorld];
-            var color = config.Color;
-            var uiColor = config.UiColor;
-            var fc = FC.Value;
+            var group = NotInFC ? config.Groups.First().Value : config.Groups[config.FCGroups[PlayerKey][FC.Value.ID]];
+            var color = group.Color;
+            var uiColor = group.UiColor;
 
-            if (!fc.Members.Any(member => member.Name == name))
+            if (NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
             {
                 var additionalFCIndex = TrackedFCs.FindIndex(f => f.World == world && f.Members.Any(m => m.Name == name));
                 if (additionalFCIndex < 0)
@@ -574,13 +577,10 @@ namespace FCNameColor
                 }
 
                 var id = TrackedFCs[additionalFCIndex].ID;
-                var configs = config.FCConfigs[PlayerKey];
-                var fcConfig = configs.FindIndex(c => c.ID == id);
-                var group = fcConfig > 0 && config.Groups.ContainsKey(configs[fcConfig].Group)
-                    ? config.Groups[configs[fcConfig].Group]
-                    : config.Groups["Other FC"];
-                color = group.Color;
-                uiColor = group.UiColor;
+                var groupName = config.FCGroups[PlayerKey].ContainsKey(id) ? config.FCGroups[PlayerKey][id] : "Default";
+                var trackedGroup = config.Groups[groupName];
+                color = trackedGroup.Color;
+                uiColor = trackedGroup.UiColor;
             }
 
             // Everyone loves the triple ternary check...

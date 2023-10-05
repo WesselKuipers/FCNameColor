@@ -41,8 +41,8 @@ namespace FCNameColor
         private string fcUrl = "";
         private FCMember currentIgnoredPlayer;
         private readonly IClientState clientState;
-        private bool editingFC = true;
         private string currentGroup;
+        private IPluginLog PluginLog;
 
         private readonly Regex fcUrlPattern =
             new Regex(@"https:\/\/(eu|na|jp).finalfantasyxiv.com\/lodestone\/freecompany\/(\d{19})\/*");
@@ -58,7 +58,7 @@ namespace FCNameColor
             set => visible = value;
         }
 
-        public PluginUI(Configuration config, IDataManager data, Plugin plugin, IClientState clientState)
+        public PluginUI(Configuration config, IDataManager data, Plugin plugin, IClientState clientState, IPluginLog pluginLog)
         {
             configuration = config;
             this.clientState = clientState;
@@ -89,6 +89,7 @@ namespace FCNameColor
                 return value != 0 ? value : 0;
             });
             uiColors = list;
+            PluginLog = pluginLog;
         }
 
         public void Dispose()
@@ -219,7 +220,7 @@ namespace FCNameColor
                     {
                         configuration.IncludeDuties = true;
                     }
-                    
+
                     configuration.OnlyDuties = onlyDuties;
                     configuration.Save();
                 }
@@ -246,16 +247,7 @@ namespace FCNameColor
                 var groups = configuration.Groups.Keys.ToArray();
                 var groupIndex = Array.IndexOf(groups, currentGroup);
 
-                if (ImGui.RadioButton("Own FC", editingFC))
-                {
-                    editingFC = true;
-                }
-
-                ImGui.SameLine();
-                if (ImGui.RadioButton("Group: ", !editingFC))
-                {
-                    editingFC = false;
-                }
+                ImGui.Text("Group: ");
 
                 ImGui.SameLine();
                 ImGui.SetNextItemWidth(150f * ImGuiHelpers.GlobalScale);
@@ -271,30 +263,38 @@ namespace FCNameColor
                     showAddNewGroup = true;
                 }
 
+                var deletable = !(currentGroup == "Default" || currentGroup == "Other FC");
+
                 ImGui.SameLine();
-                if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, 1f),
-                        new Vector4(1f, 0, 0, 1f), new Vector4(0.9f, 0, 0, 1f)) && currentGroup != "Other FC")
+
+                if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, deletable ? 1f : 0.5f),
+                    new Vector4(1f, 0, 0, deletable ? 1f : 0.5f), new Vector4(0.9f, 0, 0, deletable ? 1f : 0.5f)) && deletable)
                 {
-                    PluginLog.Debug($"Deleting group {currentGroup}");
-                    configuration.Groups.Remove(currentGroup);
-                    if (configuration.FCConfigs.ContainsKey(playerKey))
+                    if (deletable)
                     {
-                        for (var i = 0; i < configuration.FCConfigs[playerKey].Count; i++)
+                        PluginLog.Debug($"Deleting group {currentGroup}");
+                        configuration.Groups.Remove(currentGroup);
+
+                        foreach (var playerConfigs in configuration.FCGroups)
                         {
-                            if (configuration.FCConfigs[playerKey][i].Group == currentGroup)
+                            foreach (var fcGroup in playerConfigs.Value)
                             {
-                                configuration.FCConfigs[playerKey][i].Group = "Other FC";
+                                if (fcGroup.Value == currentGroup)
+                                {
+                                    configuration.FCGroups[playerConfigs.Key][fcGroup.Key] = "Other FC";
+                                }
                             }
                         }
+
+                        currentGroup = groups[0];
+                        configuration.Save();
                     }
 
-                    currentGroup = groups[0];
-                    configuration.Save();
                 }
 
                 if (ImGui.IsItemHovered())
                 {
-                    ImGui.SetTooltip($"Delete group {currentGroup}. The group Other FC cannot be removed.");
+                    ImGui.SetTooltip($"Delete group {currentGroup}.\nThe groups Default and Other FC cannot be removed.");
                 }
 
                 if (showAddNewGroup)
@@ -334,7 +334,6 @@ namespace FCNameColor
                         configuration.Save();
                         currentGroup = newGroup;
                         showAddNewGroup = false;
-                        editingFC = false;
                     }
 
                     ImGui.End();
@@ -342,12 +341,8 @@ namespace FCNameColor
 
                 ImGui.Text("Settings for");
                 ImGui.SameLine();
-                ImGui.TextColored(editingFC ? configuration.Color : configuration.Groups[currentGroup].Color,
-                    editingFC
-                        ? plugin?.FC.Value.Name ?? "your FC"
-                        : currentGroup);
-                ImGui.ColorButton("Nameplate color. Click on a color below to select a new one.",
-                    editingFC ? configuration.Color : configuration.Groups[currentGroup].Color);
+                ImGui.TextColored(configuration.Groups[currentGroup].Color, currentGroup);
+                ImGui.ColorButton("Nameplate color. Click on a color below to select a new one.", configuration.Groups[currentGroup].Color);
                 ImGui.SameLine();
                 ImGui.Text("Nameplate color. Click on a color below to set a new one.");
 
@@ -365,23 +360,17 @@ namespace FCNameColor
 
                     if (ImGui.ColorButton(id, color))
                     {
-                        if (editingFC)
-                        {
-                            configuration.UiColor = id;
-                            configuration.Color = color;
-                        }
-                        else
-                        {
-                            var group = configuration.Groups[currentGroup];
-                            group.Color = color;
-                            group.UiColor = id;
-                            configuration.Groups[currentGroup] = group;
-                        }
+
+                        var group = configuration.Groups[currentGroup];
+                        group.Color = color;
+                        group.UiColor = id;
+                        configuration.Groups[currentGroup] = group;
+
 
                         configuration.Save();
                     }
 
-                    if (id == (editingFC ? configuration.UiColor : configuration.Groups[currentGroup].UiColor))
+                    if (id == (configuration.Groups[currentGroup].UiColor))
                     {
                         // For the selected colour, render a transparent checkmark on top
                         var newCursor = ImGui.GetCursorPos();
@@ -409,14 +398,14 @@ namespace FCNameColor
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Additional FCs"))
+            if (ImGui.Button("FC management"))
             {
                 showAdditionalFCConfig = !showAdditionalFCConfig;
             }
 
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("Track additional FCs that aren’t your own");
+                ImGui.SetTooltip("Change the group settings for your FCs and track additional FCs that aren’t your own");
             }
 
             ImGui.SameLine();
@@ -507,17 +496,16 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                 ImGui.End();
             }
 
-            if (!configuration.FCConfigs.ContainsKey(plugin.PlayerKey))
+            if (!configuration.FCGroups.ContainsKey(plugin.PlayerKey))
             {
-                configuration.FCConfigs.Add(plugin.PlayerKey, new());
+                configuration.FCGroups.Add(plugin.PlayerKey, new());
             }
 
             if (showAdditionalFCConfig)
             {
-                ImGui.SetNextWindowSize(new Vector2(325, 250), ImGuiCond.FirstUseEver);
-                ImGui.SetNextWindowSizeConstraints(new Vector2(325, 250), new Vector2(float.MaxValue, float.MaxValue));
-                ImGui.Begin("FC Name Color Config - Additional FCs", ref showAdditionalFCConfig,
-                    ImGuiWindowFlags.AlwaysAutoResize);
+                ImGui.SetNextWindowSize(new Vector2(320, 250), ImGuiCond.FirstUseEver);
+                ImGui.SetNextWindowSizeConstraints(new Vector2(320, 250), new Vector2(320, 1000f));
+                ImGui.Begin("FC Name Color Config - Additional FCs", ref showAdditionalFCConfig);
                 ImGui.Spacing();
                 ImGui.TextWrapped("Track FCs that aren’t your own.");
 
@@ -530,22 +518,40 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
 
                 ImGui.Separator();
 
-                foreach (var fcConfigEntry in configuration.FCConfigs[plugin.PlayerKey].Select((value, index) => new { index, value }))
+                if (configuration.FCGroups[plugin.PlayerKey].Count == 0)
                 {
-                    var fcConfig = fcConfigEntry.value;
-                    var index = fcConfigEntry.index;
-                    var fc = configuration.FCs[fcConfig.ID];
-                    ImGui.PushID(fcConfig.ID);
+                    if (plugin.FC.HasValue)
+                    {
+                        configuration.FCGroups[plugin.PlayerKey][plugin.FC.Value.ID] = "Default";
+                    }
+
+                    ImGui.Text("There are currently no additional FCs being tracked.");
+                }
+
+                foreach (var fcConfigEntry in configuration.FCGroups[plugin.PlayerKey])
+                {
+                    var id = fcConfigEntry.Key;
+                    var groupName = fcConfigEntry.Value;
+
+                    if (!configuration.FCs.ContainsKey(id))
+                    {
+                        ImGui.Text($"Fetching FC {id}...");
+                        continue;
+                    }
+
+                    var fc = configuration.FCs[id];
+
+                    ImGui.PushID(fcConfigEntry.Key);
                     ImGui.Text("Settings for");
                     ImGui.SameLine();
-                    ImGui.TextColored(configuration.Groups[fcConfig.Group].Color, fc.Name);
-                    ImGui.ColorButton("", configuration.Groups[fcConfig.Group].Color);
+                    ImGui.TextColored(configuration.Groups[groupName].Color, fc.Name);
+                    ImGui.ColorButton("", configuration.Groups[groupName].Color);
                     ImGui.SameLine();
                     var groups = configuration.Groups.Keys.ToArray();
-                    var groupIndex = Array.IndexOf(groups, fcConfig.Group);
+                    var groupIndex = Array.IndexOf(groups, groupName);
                     if (ImGui.Combo("###AdditionalFCGroup", ref groupIndex, groups, groups.Length))
                     {
-                        configuration.FCConfigs[plugin.PlayerKey][index].Group = groups[groupIndex];
+                        configuration.FCGroups[plugin.PlayerKey][fc.ID] = groups[groupIndex];
                         configuration.Save();
                     }
 
@@ -553,8 +559,14 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                     if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, 1f),
                             new Vector4(1f, 0, 0, 1f), new Vector4(0.9f, 0, 0, 1f)))
                     {
-                        PluginLog.Debug($"Deleting additional FC {fc.Name}");
-                        configuration.FCConfigs[plugin.PlayerKey].Remove(fcConfig);
+                        PluginLog.Debug("Deleting additional FC {fc}", fc.Name);
+                        configuration.FCGroups[plugin.PlayerKey].Remove(id);
+                        var shouldDeleteFC = !configuration.FCGroups.Any(character => character.Value.ContainsValue(groupName));
+                        if (shouldDeleteFC)
+                        {
+                            configuration.FCs.Remove(fc.ID);
+                            PluginLog.Debug("Removing FC {name} altogether, no settings found anymore.", fc.Name);
+                        }
                         configuration.Save();
                     }
 
@@ -566,18 +578,11 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                     ImGui.PopID();
                 }
 
-                if (configuration.FCConfigs[plugin.PlayerKey].Count == 0)
-                {
-                    ImGui.Text("There are currently no additional FCs.");
-                }
-
-
                 ImGui.End();
 
                 if (showAddAdditionalFC || plugin.SearchingFC)
                 {
-                    ImGui.Begin("FC Name Color Config - Adding Additional FC", ref showAddAdditionalFC,
-                        ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.AlwaysVerticalScrollbar); // TODO: Check if this actually works when there's a large amount
+                    ImGui.Begin("FC Name Color Config - Adding Additional FC", ref showAddAdditionalFC, ImGuiWindowFlags.AlwaysAutoResize);
                     ImGui.Spacing();
 
                     ImGui.Text("Please enter the lodestone URL of the FC.");
@@ -627,16 +632,16 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
 
                             if (shouldContinue)
                             {
-                                if (configuration.FCConfigs[plugin.PlayerKey].Exists(fc => fc.ID == id))
+                                if (configuration.FCGroups[plugin.PlayerKey].ContainsKey(id))
                                 {
                                     ImGui.OpenPopup("###AddFCDupe");
                                 }
                                 else
                                 {
-                                    plugin.SearchFC(id, "Other FC").ContinueWith(async fc =>
+                                    plugin.SearchFC(id, "Other FC").ContinueWith(async success =>
                                     {
-                                        var result = await fc;
-                                        if (result != null)
+                                        var result = await success;
+                                        if (result)
                                         {
                                             showAddAdditionalFC = false;
                                         }
@@ -678,10 +683,10 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
         private static Vector4 ConvertUIColorToColor(UIColor uiColor)
         {
             var temp = BitConverter.GetBytes(uiColor.UIForeground);
-            return new Vector4((float) temp[3] / 255,
-                (float) temp[2] / 255,
-                (float) temp[1] / 255,
-                (float) temp[0] / 255);
+            return new Vector4((float)temp[3] / 255,
+                (float)temp[2] / 255,
+                (float)temp[1] / 255,
+                (float)temp[0] / 255);
         }
 
         private List<FCMember> GetFCMembers()

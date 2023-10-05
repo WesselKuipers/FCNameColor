@@ -48,15 +48,15 @@ namespace FCNameColor
         /// </summary>
         public bool Glow { get; set; } = false;
 
-        /// <summary>
-        /// The RGBA colour representing the currently selected colour.
-        /// </summary>
-        public Vector4 Color { get; set; } = new(0.8f, 0.21568628f, 0.21568628f, 1.0f); // The same as UiColor 14.
+        ///// <summary>
+        ///// The RGBA colour representing the currently selected colour.
+        ///// </summary>
+        //public Vector4 Color { get; set; } = new(0.8f, 0.21568628f, 0.21568628f, 1.0f); // The same as UiColor 14.
 
-        /// <summary>
-        /// The ID of the selected colour.
-        /// </summary>
-        public string UiColor { get; set; } = "14"; // A red-ish colour.
+        ///// <summary>
+        ///// The ID of the selected colour.
+        ///// </summary>
+        //public string UiColor { get; set; } = "14"; // A red-ish colour.
         #endregion
 
         #region Plugin Data
@@ -81,25 +81,19 @@ namespace FCNameColor
         public Dictionary<string, Group> Groups { get; set; } = new()
         {
             {
-                "Own FC", new Group
+                "Default", new Group
                 { 
                     UiColor = "14", // A red-ish colour.
                     Color = new Vector4(0.8f, 0.21568628f, 0.21568628f, 1.0f) // The same as UiColor 14.
-                }
-            },
-            {
-                "Other FC", new Group
-                {
-                    UiColor = "52",
-                    Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1f) // The same as UiColor 52.
                 }
             }
         };
 
         /// <summary>
-        /// A list of FC configs, mapped by player name.
+        /// A list of FC groups set to a specific FC, mapped by player name.
+        /// [Player@World][FC ID] => Group name
         /// </summary>
-        public Dictionary<string, List<FCConfig>> FCConfigs { get; set; } = new();
+        public Dictionary<string, Dictionary<string, string>> FCGroups{ get; set; } = new();
 
         /// <summary>
         /// Every FC currently tracked by the plugin.
@@ -121,16 +115,16 @@ namespace FCNameColor
             {
                 allFCs.Add(fc.Value.ID, fc.Value);
             }
-            foreach (var additionalFCList in old.AdditionalFCs.Values)
-            {
-                foreach (var fc in additionalFCList)
-                {
-                    if (!allFCs.ContainsKey(fc.ID))
-                    {
-                        //allFCs.Add(fc.ID, fc.f);
-                    }
-                }
-            }
+            //foreach (var additionalFCList in old.AdditionalFCs.Values)
+            //{
+            //    foreach (var fc in additionalFCList)
+            //    {
+            //        if (!allFCs.ContainsKey(fc.ID))
+            //        {
+            //            //allFCs.Add(fc.ID, fc.f);
+            //        }
+            //    }
+            //}
 
             Version = 2;
 
