@@ -1,17 +1,51 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Configuration;
 using Dalamud.Plugin;
-using FCNameColor;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace FCNameColor.Config
 {
     public class ConfigurationMigrator
     {
-        public ConfigurationV1 GetConfig(IPluginConfiguration? savedConfig, Dalamud.Plugin.Services.IPluginLog pluginLog)
+        public ConfigurationV1 GetConfig(DalamudPluginInterface pi, Dalamud.Plugin.Services.IPluginLog pluginLog)
         {
+            var configPath = pi.ConfigFile.FullName;
+            IPluginConfiguration savedConfig;
+
+            if (pi.ConfigFile.Exists)
+            {
+                var fileText = File.ReadAllText(configPath);
+                var parsedConf = JObject.Parse(fileText);
+                var version = parsedConf.GetValue("Version")?.ToObject<int>();
+
+                if (!version.HasValue)
+                {
+                    savedConfig = new ConfigurationV1() { FirstTime = true };
+                    pi.SavePluginConfig(savedConfig);
+
+                    return (ConfigurationV1)savedConfig;
+                }
+
+                if (version == 0)
+                {
+                    savedConfig = parsedConf.ToObject<Configuration>();
+                }
+                else
+                {
+                    savedConfig = parsedConf.ToObject<ConfigurationV1>();
+                }
+            }
+            else
+            {
+                savedConfig = new ConfigurationV1();
+                pi.SavePluginConfig(savedConfig);
+            }
+
             if (savedConfig == null)
             {
                 pluginLog.Debug("Creating new configuration.");
@@ -48,7 +82,7 @@ namespace FCNameColor.Config
 
             foreach (var (key, value) in old.PlayerFCs)
             {
-                result.PlayerFCs.Add(key, value.ID);
+                result.PlayerFCIDs.Add(key, value.ID);
             }
             pluginLog.Debug("Converted PlayerFCs");
 

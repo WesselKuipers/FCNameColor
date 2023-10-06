@@ -64,7 +64,7 @@ namespace FCNameColor
             configuration = config;
             this.clientState = clientState;
             this.plugin = plugin;
-            currentGroup = config.Groups.First().Key;
+            currentGroup = "Default";
 
             var list = new List<UIColor>(data.GetExcelSheet<UIColor>()!.Distinct(new UIColorComparer()));
             list.Sort((a, b) =>
@@ -245,9 +245,7 @@ namespace FCNameColor
 
                 ImGui.Separator();
 
-                var groups = configuration.Groups.Keys.Where(a => a != "Other FC" && a != "Default").ToArray();
-                groups.Prepend("Other FC");
-                groups.Prepend("Default");
+                var groups = configuration.Groups.Keys.Where(a => a != "Other FC" && a != "Default").Prepend("Other FC").Prepend("Default").ToArray();
                 var groupIndex = Array.IndexOf(groups, currentGroup);
 
                 ImGui.Text("Group: ");
@@ -425,7 +423,7 @@ namespace FCNameColor
             {
                 if (ImGui.Button("Clear & Retry"))
                 {
-                    configuration.PlayerFCs = new();
+                    configuration.PlayerFCIDs = new();
                     configuration.PlayerIDs = new();
                     configuration.Save();
                     showAddAdditionalFC = false;
@@ -628,7 +626,7 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
 
                             if (configuration.PlayerIDs.TryGetValue(plugin.PlayerKey, out var currentPlayerID))
                             {
-                                if (configuration.PlayerFCs.TryGetValue(currentPlayerID, out var playerFC))
+                                if (configuration.PlayerFCIDs.TryGetValue(currentPlayerID, out var playerFC))
                                 {
                                     if (playerFC == id)
                                     {
@@ -700,7 +698,7 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
         private List<FCMember> GetFCMembers()
         {
             var fcMembers = new List<FCMember>();
-            var playersFCs = configuration.PlayerFCs;
+            var playersFCs = configuration.PlayerFCIDs;
             // TODO: Should this fetch *every* tracked FC or just the player's FCs?
             foreach (var playerFCID in playersFCs)
             {

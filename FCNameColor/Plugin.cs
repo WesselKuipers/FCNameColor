@@ -87,7 +87,7 @@ namespace FCNameColor
 
         public Plugin(IDataManager dataManager)
         {
-            config = new ConfigurationMigrator().GetConfig(Pi.GetPluginConfig(), PluginLog);
+            config = new ConfigurationMigrator().GetConfig(Pi, PluginLog);
 
             if (config.FirstTime)
             {
@@ -400,7 +400,7 @@ namespace FCNameColor
                 config.Save();
             }
 
-            var cachedFCEXists = config.PlayerFCs.TryGetValue(playerId, out var cachedFCId);
+            var cachedFCEXists = config.PlayerFCIDs.TryGetValue(playerId, out var cachedFCId);
             if (cachedFCEXists)
             {
                 var cachedFCFetched = config.FCs.TryGetValue(cachedFCId, out var cachedFC);
@@ -441,7 +441,7 @@ namespace FCNameColor
 
                     var newMembers = await FetchFCMembers(fc.ID);
                     fc.Members = newMembers.ToArray();
-                    config.PlayerFCs[playerId] = fc.ID;
+                    config.PlayerFCIDs[playerId] = fc.ID;
                     config.FCs[fc.ID] = fc;
                     PluginLog.Debug($"Finished fetching data. Fetched {fc.Members.Length} members.");
                     FC = fc;

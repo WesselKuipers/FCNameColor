@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Configuration;
 using Dalamud.Plugin;
+using Newtonsoft.Json;
 
 namespace FCNameColor.Config
 {
@@ -59,7 +60,7 @@ namespace FCNameColor.Config
         /// <summary>
         /// A mapping of Player ID and their FC’s ID
         /// </summary>
-        public Dictionary<string, string> PlayerFCs { get; set; } = new();
+        public Dictionary<string, string> PlayerFCIDs { get; set; } = new();
 
         /// <summary>
         /// A mapping of player IDs and player names to ignore processing of.
