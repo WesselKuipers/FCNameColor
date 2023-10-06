@@ -6,6 +6,22 @@ using Dalamud.Plugin;
 
 namespace FCNameColor
 {
+    /// <summary>
+    /// A configuration specific to an FC.
+    /// </summary>
+    public class FCConfig
+    {
+        /// <summary>
+        /// The FC this config applies to.
+        /// </summary>
+        public FC FC;
+
+        /// <summary>
+        /// The name of the group this FC is assigned to.
+        /// </summary>
+        public string Group;
+    }
+
     [Serializable]
     public class Configuration : IPluginConfiguration
     {
@@ -86,17 +102,5 @@ namespace FCNameColor
         /// A list of additional FCs to track, mapped by player name.
         /// </summary>
         public Dictionary<string, List<FCConfig>> AdditionalFCs { get; set; } = new();
-
-        [NonSerialized] private DalamudPluginInterface pluginInterface;
-
-        public void Initialize(DalamudPluginInterface pluginInterface)
-        {
-            this.pluginInterface = pluginInterface;
-        }
-
-        public void Save()
-        {
-            pluginInterface.SavePluginConfig(this);
-        }
     }
 }

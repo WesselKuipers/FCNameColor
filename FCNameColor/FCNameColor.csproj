@@ -6,8 +6,8 @@
     <AssemblyTitle>FCNameColor</AssemblyTitle>
     <Product>FCNameColor</Product>
     <Copyright>Copyright © 2023</Copyright>
-    <AssemblyVersion>3.0.2.2</AssemblyVersion>
-    <FileVersion>3.0.2.2</FileVersion>
+    <AssemblyVersion>4.0.0.0</AssemblyVersion>
+    <FileVersion>4.0.0.0</FileVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <PreserveCompilationContext>false</PreserveCompilationContext>
@@ -30,7 +30,8 @@
     <DalamudLibPath>$(DALAMUD_HOME)/</DalamudLibPath>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="DalamudPackager" Version="2.1.11" />
+    <PackageReference Include="DalamudPackager" Version="2.1.12" />
+    <PackageReference Include="Pilz.Dalamud" Version="0.5.0" />
     <Reference Include="FFXIVClientStructs">
       <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
       <Private>false</Private>

@@ -52,22 +52,6 @@ namespace FCNameColor
             Color = color;
         }
     }
-    
-    /// <summary>
-    /// A configuration specific to an FC.
-    /// </summary>
-    public class FCConfig
-    {
-        /// <summary>
-        /// The FC this config applies to.
-        /// </summary>
-        public FC FC;
-
-        /// <summary>
-        /// The name of the group this FC is assigned to.
-        /// </summary>
-        public string Group;
-    }
 
     /// <summary>
     /// A representation of an FC’s member.
