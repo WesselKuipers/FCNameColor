@@ -4,7 +4,7 @@ using System.Numerics;
 using Dalamud.Configuration;
 using Dalamud.Plugin;
 
-namespace FCNameColor.Config
+namespace FCNameColor
 {
     /// <summary>
     /// A configuration specific to an FC.

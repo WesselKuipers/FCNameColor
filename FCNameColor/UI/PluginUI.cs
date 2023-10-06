@@ -12,6 +12,7 @@ using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Logging;
 using Dalamud.Plugin.Services;
+using FCNameColor.Config;
 using ImGuiNET;
 using Lumina.Excel.GeneratedSheets;
 
@@ -244,7 +245,9 @@ namespace FCNameColor
 
                 ImGui.Separator();
 
-                var groups = configuration.Groups.Keys.ToArray();
+                var groups = configuration.Groups.Keys.Where(a => a != "Other FC" && a != "Default").ToArray();
+                groups.Prepend("Other FC");
+                groups.Prepend("Default");
                 var groupIndex = Array.IndexOf(groups, currentGroup);
 
                 ImGui.Text("Group: ");

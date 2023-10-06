@@ -5,7 +5,7 @@ using System.Numerics;
 using Dalamud.Configuration;
 using Dalamud.Plugin;
 
-namespace FCNameColor
+namespace FCNameColor.Config
 {
     [Serializable]
     public class ConfigurationV1 : IPluginConfiguration

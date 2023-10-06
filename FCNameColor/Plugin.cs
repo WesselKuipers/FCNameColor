@@ -39,6 +39,7 @@ using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
 using Pilz.Dalamud.Nameplates.Tools;
 using Pilz.Dalamud.Tools.Strings;
+using FCNameColor.Config;
 
 namespace FCNameColor
 {
