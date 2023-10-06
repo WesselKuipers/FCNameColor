@@ -33,7 +33,7 @@ namespace FCNameColor
     internal class PluginUI : IDisposable
     {
         private readonly Plugin plugin;
-        private readonly Configuration configuration;
+        private readonly ConfigurationV1 configuration;
         private readonly List<UIColor> uiColors;
         private bool showIgnoreList;
         private bool showAdditionalFCConfig;
@@ -58,7 +58,7 @@ namespace FCNameColor
             set => visible = value;
         }
 
-        public PluginUI(Configuration config, IDataManager data, Plugin plugin, IClientState clientState, IPluginLog pluginLog)
+        public PluginUI(ConfigurationV1 config, IDataManager data, Plugin plugin, IClientState clientState, IPluginLog pluginLog)
         {
             configuration = config;
             this.clientState = clientState;
@@ -286,7 +286,7 @@ namespace FCNameColor
                             }
                         }
 
-                        currentGroup = groups[0];
+                        currentGroup = "Default";
                         configuration.Save();
                     }
 

@@ -9,10 +9,10 @@ namespace FCNameColor
     public class FCNameColorAPI : IFCNameColorAPI
     {
         private readonly bool initialized;
-        private readonly Configuration configuration;
+        private readonly ConfigurationV1 configuration;
         private readonly IPluginLog PluginLog;
         
-        public FCNameColorAPI(Configuration configuration, IPluginLog pluginLog)
+        public FCNameColorAPI(ConfigurationV1 configuration, IPluginLog pluginLog)
         {
             this.configuration = configuration;
             this.PluginLog = pluginLog;
