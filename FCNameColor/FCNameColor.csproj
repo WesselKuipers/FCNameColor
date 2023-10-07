@@ -31,7 +31,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="DalamudPackager" Version="2.1.12" />
-    <PackageReference Include="Pilz.Dalamud" Version="0.5.0" />
+    <PackageReference Include="Pilz.Dalamud" Version="0.5.2.1" />
     <Reference Include="FFXIVClientStructs">
       <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
       <Private>false</Private>
