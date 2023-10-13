@@ -48,7 +48,7 @@ namespace FCNameColor.Config
 
             if (savedConfig == null)
             {
-                pluginLog.Debug("Creating new configuration.");
+                pluginLog.Info("Creating new configuration.");
                 return new ConfigurationV1
                 {
                     FirstTime = true
@@ -63,7 +63,7 @@ namespace FCNameColor.Config
             };
         }
 
-        private ConfigurationV1 MigrateFromV0(Configuration old, Dalamud.Plugin.Services.IPluginLog pluginLog)
+        private static ConfigurationV1 MigrateFromV0(Configuration old, Dalamud.Plugin.Services.IPluginLog pluginLog)
         {
             pluginLog.Info("Migrating from V0 to V1");
             var result = new ConfigurationV1
@@ -78,13 +78,13 @@ namespace FCNameColor.Config
                 Groups = old.Groups,
                 Enabled = old.Enabled,
             };
-            pluginLog.Debug("Imported old flags");
+            pluginLog.Info("Imported old flags");
 
             foreach (var (key, value) in old.PlayerFCs)
             {
                 result.PlayerFCIDs.Add(key, value.ID);
             }
-            pluginLog.Debug("Converted PlayerFCs");
+            pluginLog.Info("Converted PlayerFCs");
 
             if (!result.Groups.ContainsKey("Default"))
             {
@@ -93,7 +93,7 @@ namespace FCNameColor.Config
                     UiColor = old.UiColor, // Inherit from old settings
                     Color = old.Color
                 });
-                pluginLog.Debug("Added Default group with UiColor {a}", old.UiColor);
+                pluginLog.Info("Added Default group with UiColor {a}", old.UiColor);
             }
 
             if (!result.Groups.ContainsKey("Other FC"))
@@ -103,7 +103,7 @@ namespace FCNameColor.Config
                     UiColor = "52",
                     Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1.0f)
                 });
-                pluginLog.Debug("Added group Other FC");
+                pluginLog.Info("Added group Other FC");
             }
 
             var mainFCs = new Dictionary<string, FC>();
@@ -114,7 +114,7 @@ namespace FCNameColor.Config
                     mainFCs.Add(fc.Value.ID, fc.Value);
                 }
 
-                pluginLog.Debug("Imported FC {id}", fc.Value.ID);
+                pluginLog.Info("Imported FC {id}", fc.Value.ID);
 
                 var playerIdFound = old.PlayerIDs.Where(a => a.Value == fc.Key).ToList();
                 if (playerIdFound.Count > 0)
@@ -127,7 +127,7 @@ namespace FCNameColor.Config
                         [fc.Value.ID] = "Default"
                     };
 
-                    pluginLog.Debug("Assigned group Default to FC {fc} for player {player}", fc.Value.ID, playerKey);
+                    pluginLog.Info("Assigned group Default to FC {fc} for player {player}", fc.Value.ID, playerKey);
                 }
             }
             result.FCs = mainFCs;
@@ -138,18 +138,18 @@ namespace FCNameColor.Config
                 if (!result.FCGroups.ContainsKey(playerKey))
                 {
                     result.FCGroups[playerKey] = new();
-                    pluginLog.Debug("Created FCGroup entry for player {player}", playerKey);
+                    pluginLog.Info("Created FCGroup entry for player {player}", playerKey);
                 }
 
                 foreach (var fcConfig in fcConfigs)
                 {
                     result.FCGroups[playerKey][fcConfig.FC.ID] = fcConfig.Group;
-                    pluginLog.Debug("Assigned group {group} to FC {fc} for player {player}", fcConfig.Group, fcConfig.FC.ID, playerKey);
+                    pluginLog.Info("Assigned group {group} to FC {fc} for player {player}", fcConfig.Group, fcConfig.FC.ID, playerKey);
 
                     if (!result.FCs.ContainsKey(fcConfig.FC.ID))
                     {
                         result.FCs.Add(fcConfig.FC.ID, fcConfig.FC);
-                        pluginLog.Debug("Imported FC {id}", fcConfig.FC.ID);
+                        pluginLog.Info("Imported FC {id}", fcConfig.FC.ID);
                     }
                 }
             }
