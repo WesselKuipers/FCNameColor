@@ -499,91 +499,100 @@ namespace FCNameColor
                 return;
             }
 
-            var playerCharacter = NameplateManager.GetNameplateGameObject<PlayerCharacter>(eventArgs.SafeNameplateObject);
-            if (playerCharacter == null) { return; }
-            if (playerCharacter.ObjectKind != ObjectKind.Player) { return; }
-
-            var objectID = playerCharacter.ObjectId;
-            var name = playerCharacter.Name.TextValue;
-
-            if (skipCache.Contains(objectID)) { return; }
-            if (config.IgnoredPlayers.ContainsKey(name))
+            try
             {
-                return;
-            }
+                var playerCharacter = NameplateManager.GetNameplateGameObject<PlayerCharacter>(eventArgs.SafeNameplateObject);
+                if (playerCharacter == null) { return; }
+                if (playerCharacter.ObjectKind != ObjectKind.Player) { return; }
 
-            var isLocalPlayer = ClientState?.LocalPlayer?.ObjectId == objectID;
-            var isInDuty = Condition[ConditionFlag.BoundByDuty56];
+                var objectID = playerCharacter.ObjectId;
+                var name = playerCharacter.Name.TextValue;
 
-            if (isInDuty && isLocalPlayer) { return; }
-            if (!isInDuty && config.OnlyDuties) { return; }
-            if (!isInDuty && isLocalPlayer && !config.IncludeSelf) { return; }
-            // Skip any player who is dead, colouring the name of dead characters makes them harder to recognize.
-            if (playerCharacter.CurrentHp == 0) { return; }
-
-
-            var isInParty = playerCharacter.StatusFlags.HasFlag(StatusFlags.PartyMember);
-            var isInAlliance = playerCharacter.StatusFlags.HasFlag(StatusFlags.AllianceMember);
-            var isFriend = playerCharacter.StatusFlags.HasFlag(StatusFlags.Friend);
-
-            if (config.IgnoreFriends && isFriend) { return; }
-
-            var world = playerCharacter.HomeWorld.GameData.Name;
-            var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value);
-            var color = group.Color;
-            var uiColor = group.UiColor;
-
-            if (NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
-            {
-                var additionalFCIndex = TrackedFCs.FindIndex(f => f.World == world && f.Members.Any(m => m.Name == name));
-                if (additionalFCIndex < 0)
+                if (skipCache.Contains(objectID)) { return; }
+                if (config.IgnoredPlayers.ContainsKey(name))
                 {
-                    // This player isn’t an FC member or in one of the tracked FCs.
-                    // We can skip it in future calls.
-                    PluginLog.Debug("Adding {name} ({id}) to skip cache", name, objectID);
-                    skipCache.Add(objectID);
                     return;
                 }
 
-                var id = TrackedFCs[additionalFCIndex].ID;
-                var groupName = config.FCGroups[PlayerKey].ContainsKey(id) ? config.FCGroups[PlayerKey][id] : "Default";
-                if (!config.Groups.ContainsKey(groupName))
+                var isLocalPlayer = ClientState?.LocalPlayer?.ObjectId == objectID;
+                var isInDuty = Condition[ConditionFlag.BoundByDuty56];
+
+                if (isInDuty && isLocalPlayer) { return; }
+                if (!isInDuty && config.OnlyDuties) { return; }
+                if (!isInDuty && isLocalPlayer && !config.IncludeSelf) { return; }
+                // Skip any player who is dead, colouring the name of dead characters makes them harder to recognize.
+                if (playerCharacter.CurrentHp == 0) { return; }
+
+
+                var isInParty = playerCharacter.StatusFlags.HasFlag(StatusFlags.PartyMember);
+                var isInAlliance = playerCharacter.StatusFlags.HasFlag(StatusFlags.AllianceMember);
+                var isFriend = playerCharacter.StatusFlags.HasFlag(StatusFlags.Friend);
+
+                if (config.IgnoreFriends && isFriend) { return; }
+
+                var world = playerCharacter.HomeWorld.GameData.Name;
+                var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value);
+                var color = group.Color;
+                var uiColor = group.UiColor;
+
+                if (NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
                 {
-                    config.Groups.Add(groupName, ConfigurationV1.DefaultGroups[1].Value);
+                    var additionalFCIndex = TrackedFCs.FindIndex(f => f.World == world && f.Members.Any(m => m.Name == name));
+                    if (additionalFCIndex < 0)
+                    {
+                        // This player isn’t an FC member or in one of the tracked FCs.
+                        // We can skip it in future calls.
+                        PluginLog.Debug("Adding {name} ({id}) to skip cache", name, objectID);
+                        skipCache.Add(objectID);
+                        return;
+                    }
+
+                    var id = TrackedFCs[additionalFCIndex].ID;
+                    var groupName = config.FCGroups[PlayerKey].ContainsKey(id) ? config.FCGroups[PlayerKey][id] : "Default";
+                    if (!config.Groups.ContainsKey(groupName))
+                    {
+                        config.Groups.Add(groupName, ConfigurationV1.DefaultGroups[1].Value);
+                    }
+
+                    var trackedGroup = config.Groups[groupName];
+                    color = trackedGroup.Color;
+                    uiColor = trackedGroup.UiColor;
                 }
 
-                var trackedGroup = config.Groups[groupName];
-                color = trackedGroup.Color;
-                uiColor = trackedGroup.UiColor;
-            }
-
-            var nameplateChanges = new NameplateChanges(eventArgs);
-            var shouldReplaceName = !config.OnlyColorFCTag && !isLocalPlayer;
-            if (!isInDuty && !shouldReplaceName)
-            {
-                ApplyNameplateColor(nameplateChanges, NameplateElements.FreeCompany, uiColor);
-            }
-
-            if ((isInDuty && config.IncludeDuties) || shouldReplaceName)
-            {
-                ApplyNameplateColor(nameplateChanges, NameplateElements.Name, uiColor);
-
-                if (eventArgs.IsTitleVisible && eventArgs.Title.TextValue.Length > 0)
-                {
-                    ApplyNameplateColor(nameplateChanges, NameplateElements.Title, uiColor);
-                }
-
-                if (!isInDuty)
+                var nameplateChanges = new NameplateChanges(eventArgs);
+                var shouldReplaceName = !config.OnlyColorFCTag && !isLocalPlayer;
+                if (!isInDuty && !shouldReplaceName)
                 {
                     ApplyNameplateColor(nameplateChanges, NameplateElements.FreeCompany, uiColor);
                 }
-            }
+
+                if ((isInDuty && config.IncludeDuties) || shouldReplaceName)
+                {
+                    ApplyNameplateColor(nameplateChanges, NameplateElements.Name, uiColor);
+
+                    if (eventArgs.IsTitleVisible && eventArgs.Title.TextValue.Length > 0)
+                    {
+                        ApplyNameplateColor(nameplateChanges, NameplateElements.Title, uiColor);
+                    }
+
+                    if (!isInDuty)
+                    {
+                        ApplyNameplateColor(nameplateChanges, NameplateElements.FreeCompany, uiColor);
+                    }
+                }
 
 #if DEBUG
-            PluginLog.Verbose("Overriding player nameplate for {name} (ObjectID {objectID})", name, objectID);
+                PluginLog.Verbose("Overriding player nameplate for {name} (ObjectID {objectID})", name, objectID);
 #endif
 
-            NameplateUpdateFactory.ApplyNameplateChanges(new NameplateChangesProps(nameplateChanges));
+                NameplateUpdateFactory.ApplyNameplateChanges(new NameplateChangesProps(nameplateChanges));
+            }
+            catch (Exception e)
+            {
+                PluginLog.Error("Something went wrong when trying to run the nameplate logic.");
+                PluginLog.Error("Error message: {e}", e.Message);
+            }
+
         }
 
         protected virtual void Dispose(bool disposing)
