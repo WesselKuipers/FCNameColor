@@ -1,42 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Threading.Tasks;
 using System.Timers;
-using Dalamud.Data;
 using Dalamud.Game;
-using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
-using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
-using Dalamud.Hooking;
 using Dalamud.IoC;
-using Dalamud.Logging;
-using Dalamud.Memory;
 using Dalamud.Plugin;
-using FCNameColor.Utils;
-using FFXIVClientStructs.FFXIV.Client.Game.Character;
-using FFXIVClientStructs.FFXIV.Client.Game.Object;
-using FFXIVClientStructs.FFXIV.Client.UI;
-using FFXIVClientStructs.FFXIV.Component.GUI;
-using Lumina.Excel.GeneratedSheets;
 using NetStone;
 using NetStone.Model.Parseables.FreeCompany.Members;
 using NetStone.Search.Character;
-using static FFXIVClientStructs.FFXIV.Client.UI.RaptureAtkModule;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using Dalamud.Plugin.Services;
-using Dalamud.Utility;
 using Pilz.Dalamud;
 using Pilz.Dalamud.Nameplates;
 using Dalamud.Game.ClientState.Objects.SubKinds;
-using System.Diagnostics.Tracing;
 using Dalamud.Game.ClientState.Objects.Enums;
-using Dalamud.Game.ClientState.Objects.Types;
 using Pilz.Dalamud.Nameplates.Tools;
 using Pilz.Dalamud.Tools.Strings;
 using FCNameColor.Config;
@@ -95,27 +75,31 @@ namespace FCNameColor
             }
 
             config.Initialize(Pi);
-            if (!config.Groups.ContainsKey("Other FC"))
+
+            if (!config.Groups.ContainsKey("Default"))
             {
-                config.Groups.Add("Other FC", new Group
-                {
-                    UiColor = "52",
-                    Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1f)
-                });
+                config.Groups.Add(ConfigurationV1.DefaultGroups[0].Key, ConfigurationV1.DefaultGroups[0].Value);
                 config.Save();
+                PluginLog.Info("Added missing group Default");
             }
 
-            var invalidFCs = config.FCs.Where(fc => fc.Value.Name == null);
-            if (invalidFCs.Any())
+            if (!config.Groups.ContainsKey("Other FC"))
             {
-                // Remove any invalid entry from the list of invalid FCs.
-                // This prevents unexpected behaviour if an FC got added without proper data.
-                foreach (var fc in invalidFCs)
-                {
-                    config.FCs.Remove(fc.Key);
-                }
-
+                config.Groups.Add(ConfigurationV1.DefaultGroups[1].Key, ConfigurationV1.DefaultGroups[1].Value);
                 config.Save();
+                PluginLog.Info("Added missing group Other FC");
+            }
+
+            foreach (var character in config.FCGroups)
+            {
+                foreach (var (fc, group) in character.Value)
+                {
+                    if (!config.Groups.ContainsKey(group))
+                    {
+                        config.FCGroups[character.Key][fc] = "Default";
+                        PluginLog.Info("Set group for FC {fc} to Default because the configured group wasn't found.", fc);
+                    }
+                }
             }
 
             UI = new PluginUI(config, dataManager, this, ClientState, PluginLog);
@@ -148,12 +132,12 @@ namespace FCNameColor
 
         private void OnCommand(string command, string args)
         {
-            UI.Visible = true;
+            UI.Visible = !UI.Visible;
         }
 
         private void DrawConfigUI()
         {
-            UI.Visible = true;
+            UI.Visible = !UI.Visible;
         }
 
         private void OnLogin()
@@ -517,7 +501,7 @@ namespace FCNameColor
 
             var playerCharacter = NameplateManager.GetNameplateGameObject<PlayerCharacter>(eventArgs.SafeNameplateObject);
             if (playerCharacter == null) { return; }
-            if (playerCharacter.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player) { return; }
+            if (playerCharacter.ObjectKind != ObjectKind.Player) { return; }
 
             var objectID = playerCharacter.ObjectId;
             var name = playerCharacter.Name.TextValue;
@@ -545,7 +529,7 @@ namespace FCNameColor
             if (config.IgnoreFriends && isFriend) { return; }
 
             var world = playerCharacter.HomeWorld.GameData.Name;
-            var group = NotInFC ? config.Groups.First().Value : config.Groups[config.FCGroups[PlayerKey][FC.Value.ID]];
+            var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value);
             var color = group.Color;
             var uiColor = group.UiColor;
 
@@ -563,6 +547,11 @@ namespace FCNameColor
 
                 var id = TrackedFCs[additionalFCIndex].ID;
                 var groupName = config.FCGroups[PlayerKey].ContainsKey(id) ? config.FCGroups[PlayerKey][id] : "Default";
+                if (!config.Groups.ContainsKey(groupName))
+                {
+                    config.Groups.Add(groupName, ConfigurationV1.DefaultGroups[1].Value);
+                }
+
                 var trackedGroup = config.Groups[groupName];
                 color = trackedGroup.Color;
                 uiColor = trackedGroup.UiColor;

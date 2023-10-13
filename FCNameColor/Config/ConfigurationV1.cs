@@ -72,20 +72,8 @@ namespace FCNameColor.Config
         /// </summary>
         public Dictionary<string, Group> Groups { get; set; } = new()
         {
-            {
-                "Default", new Group
-                {
-                    UiColor = "14", // A red-ish colour.
-                    Color = new Vector4(0.8f, 0.21568628f, 0.21568628f, 1.0f) // The same as UiColor 14.
-                }
-            },
-            {
-                "Other FC", new Group
-                {
-                    UiColor = "52",
-                    Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1.0f)
-                }
-            }
+            {  DefaultGroups[0].Key, DefaultGroups[0].Value },
+            {  DefaultGroups[1].Key, DefaultGroups[1].Value },
         };
 
         /// <summary>
@@ -101,6 +89,18 @@ namespace FCNameColor.Config
         #endregion
 
         [NonSerialized] private DalamudPluginInterface pluginInterface;
+        [NonSerialized]
+        public static KeyValuePair<string, Group>[] DefaultGroups =
+        {
+            new KeyValuePair<string, Group>("Default", new Group {
+                UiColor = "14", // A red-ish colour.
+                Color = new Vector4(0.8f, 0.21568628f, 0.21568628f, 1.0f) // The same as UiColor 14.})
+            }),
+            new KeyValuePair<string, Group>("Other FC", new Group {
+                UiColor = "52",
+                Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1.0f)
+            })
+        };
 
         public void Initialize(DalamudPluginInterface pluginInterface)
         {
