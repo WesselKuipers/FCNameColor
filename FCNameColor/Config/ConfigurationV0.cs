@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Configuration;
-using Dalamud.Plugin;
 
 namespace FCNameColor
 {

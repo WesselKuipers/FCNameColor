@@ -8,7 +8,6 @@ using Dalamud.Plugin;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using Dalamud.Plugin.Services;
-using System.Security.Cryptography;
 
 namespace FCNameColor.Config
 {
