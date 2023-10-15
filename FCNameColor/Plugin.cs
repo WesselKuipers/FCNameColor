@@ -67,7 +67,7 @@ namespace FCNameColor
 
         public Plugin(IDataManager dataManager)
         {
-            config = new ConfigurationMigrator().GetConfig(Pi, PluginLog);
+            config = new ConfigurationMigrator().GetConfig(Pi, PluginLog, Chat);
 
             if (config.FirstTime)
             {
