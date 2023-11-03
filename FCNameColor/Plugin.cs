@@ -183,9 +183,10 @@ namespace FCNameColor
             SearchingFCError = null;
         }
 
-        private void HandleError()
+        private void HandleError(Exception e)
         {
             PluginLog.Debug("Running HandleError");
+            PluginLog.Error(e, "Exception caught in HandleError");
             Error = true;
             Cooldown = CooldownTime * 6;
             timer.Start();
@@ -376,7 +377,7 @@ namespace FCNameColor
                 if (string.IsNullOrEmpty(playerId))
                 {
                     PluginLog.Error("Could not find player on Lodestone");
-                    HandleError();
+                    HandleError(new Exception($"Could not find player {playerId} on Lodestone"));
                     return;
                 }
 
@@ -473,9 +474,9 @@ namespace FCNameColor
                 skipCache.Clear();
                 new Task(ScheduleFCUpdates).Start();
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                HandleError();
+                HandleError(e);
             }
         }
 
