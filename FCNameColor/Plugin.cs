@@ -15,9 +15,9 @@ using Dalamud.Plugin.Services;
 using Dalamud.Game.ClientState.Objects.Enums;
 using FCNameColor.Config;
 using Dalamud.Game.Gui.NamePlate;
-using Dalamud.Game.Text.SeStringHandling;
-using Lumina.Text;
 using System.Numerics;
+using Dalamud.Interface.Windowing;
+using FCNameColor.UI;
 
 namespace FCNameColor
 {
@@ -38,10 +38,12 @@ namespace FCNameColor
         [PluginService] public static IGameInteropProvider GameInteropProvider { get; private set; }
         [PluginService] public static IPluginLog PluginLog { get; private set; }
         [PluginService] public static INamePlateGui NamePlateGui {  get; private set; }
+        public readonly WindowSystem WindowSystem = new("FC Name Color");
 
         private Dictionary<uint, string> WorldNames;
         private LodestoneClient lodestoneClient;
         private readonly FCNameColorProvider fcNameColorProvider;
+
         private PluginUI UI { get; }
         private bool loggingIn;
         private readonly Timer timer = new() { Interval = 1000 };
@@ -62,6 +64,7 @@ namespace FCNameColor
         public string PlayerKey;
         public bool SearchingFC;
         public string SearchingFCError = "";
+        public bool ConfigOpen => UI.IsOpen;
 
         public Plugin(IDataManager dataManager)
         {
@@ -100,14 +103,25 @@ namespace FCNameColor
                 }
             }
 
-            UI = new PluginUI(config, dataManager, this, ClientState, PluginLog);
+            var addNewGroupWindow = new AddNewGroupWindow(config, this);
+            var ignoreListWindow = new IgnoreListWindow(config, this);
+            var addAdditionalFCWindow = new AddAdditionalFCWindow(config, this);
+            var additionalFCsWindow = new AdditionalFCsWindow(config, this, PluginLog, addAdditionalFCWindow);
+
+            UI = new PluginUI(config, dataManager, this, ClientState, PluginLog, addNewGroupWindow, ignoreListWindow, additionalFCsWindow);
+            WindowSystem.AddWindow(UI);
+            WindowSystem.AddWindow(addNewGroupWindow);
+            WindowSystem.AddWindow(ignoreListWindow);
+            WindowSystem.AddWindow(addAdditionalFCWindow);
+            WindowSystem.AddWindow(additionalFCsWindow);
+
 
             Commands.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
                 HelpMessage = "Opens the FCNameColor Config."
             });
 
-            NamePlateGui.OnNamePlateUpdate += this.NamePlateGui_OnNamePlateUpdate;
+            NamePlateGui.OnNamePlateUpdate += NamePlateGui_OnNamePlateUpdate;
 
             timer.Elapsed += delegate
             {
@@ -120,20 +134,20 @@ namespace FCNameColor
 
             ClientState.Login += OnLogin;
             Framework.Update += OnFrameworkUpdate;
-            Pi.UiBuilder.Draw += DrawUI;
-            Pi.UiBuilder.OpenConfigUi += DrawConfigUI;
+            Pi.UiBuilder.Draw += WindowSystem.Draw;
+            Pi.UiBuilder.OpenConfigUi += ToggleConfigUI;
 
             fcNameColorProvider = new FCNameColorProvider(Pi, new FCNameColorAPI(config, PluginLog), PluginLog);
         }
 
         private void OnCommand(string command, string args)
         {
-            UI.Visible = !UI.Visible;
+            UI.Toggle();
         }
 
-        private void DrawConfigUI()
+        private void ToggleConfigUI()
         {
-            UI.Visible = !UI.Visible;
+            UI.Toggle();
         }
 
         private void OnLogin()
@@ -601,7 +615,7 @@ namespace FCNameColor
             try
             {
                 if (!disposing) return;
-                UI.Dispose();
+                WindowSystem.RemoveAllWindows();
 
                 fcNameColorProvider.Dispose();
 
