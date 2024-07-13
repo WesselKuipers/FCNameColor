@@ -203,6 +203,11 @@ namespace FCNameColor
                 addNewGroupWindow.IsOpen = true;
             }
 
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Add a new group which you can assign FCs to.");
+            }
+
             using (var groupsPanel = ImRaii.Child("###GroupsPanel", new Vector2(ImGui.GetContentRegionAvail().X, 300.0f * ImGuiHelpers.GlobalScale)))
             {
                 if (groupsPanel)

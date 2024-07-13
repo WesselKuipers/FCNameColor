@@ -26,10 +26,7 @@ namespace FCNameColor.UI
             SizeCondition = ImGuiCond.FirstUseEver;
         }
 
-        public override bool DrawConditions()
-        {
-            return plugin.ConfigOpen && base.DrawConditions();
-        }
+        public override bool DrawConditions() => plugin.ConfigOpen;
 
         public override void Draw()
         {
