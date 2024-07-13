@@ -13,11 +13,11 @@ namespace FCNameColor.Config
 {
     public class ConfigurationMigrator
     {
-        private DalamudPluginInterface pi;
+        private IDalamudPluginInterface pi;
         private IPluginLog pluginLog;
         private IChatGui chat;
 
-        public ConfigurationV1 GetConfig(DalamudPluginInterface pi, IPluginLog pluginLog, IChatGui chat)
+        public ConfigurationV1 GetConfig(IDalamudPluginInterface pi, IPluginLog pluginLog, IChatGui chat)
         {
             this.pi = pi;
             this.pluginLog = pluginLog;

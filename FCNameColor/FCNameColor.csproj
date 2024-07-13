@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <ProjectGuid>{13C812E9-0D42-4B95-8646-40EEBF30636F}</ProjectGuid>
-    <TargetFramework>net7.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows7.0</TargetFramework>
     <LangVersion>9.0</LangVersion>
     <AssemblyTitle>FCNameColor</AssemblyTitle>
     <Product>FCNameColor</Product>
     <Copyright>Copyright © 2023</Copyright>
-    <AssemblyVersion>4.0.0.3</AssemblyVersion>
-    <FileVersion>4.0.0.3</FileVersion>
+    <AssemblyVersion>5.0.0.0</AssemblyVersion>
+    <FileVersion>5.0.0.0</FileVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <PreserveCompilationContext>false</PreserveCompilationContext>
@@ -30,8 +30,7 @@
     <DalamudLibPath>$(DALAMUD_HOME)/</DalamudLibPath>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="DalamudPackager" Version="2.1.12" />
-    <PackageReference Include="Pilz.Dalamud" Version="0.5.2.1" />
+    <PackageReference Include="DalamudPackager" Version="2.1.13" />
     <Reference Include="FFXIVClientStructs">
       <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
       <Private>false</Private>
