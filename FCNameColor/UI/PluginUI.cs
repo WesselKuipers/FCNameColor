@@ -8,6 +8,7 @@ using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Plugin.Services;
 using FCNameColor.Config;
 using ImGuiNET;
@@ -32,15 +33,13 @@ namespace FCNameColor
     {
         private readonly Plugin plugin;
         private readonly ConfigurationV1 configuration;
-        private readonly List<UIColor> uiColors;
         private bool showIgnoreList;
         private bool showAdditionalFCConfig;
         private bool showAddAdditionalFC;
         private string fcUrl = "";
         private FCMember currentIgnoredPlayer;
         private readonly IClientState clientState;
-        private string currentGroup;
-        private IPluginLog PluginLog;
+        private readonly IPluginLog pluginLog;
 
         private readonly Regex fcUrlPattern =
             new Regex(@"https:\/\/(eu|na|jp).finalfantasyxiv.com\/lodestone\/freecompany\/(\d{19})\/*");
@@ -61,33 +60,7 @@ namespace FCNameColor
             configuration = config;
             this.clientState = clientState;
             this.plugin = plugin;
-            currentGroup = "Default";
-
-            var list = new List<UIColor>(data.GetExcelSheet<UIColor>()!.Distinct(new UIColorComparer()));
-            list.Sort((a, b) =>
-            {
-                var colorA = ConvertUIColorToColor(a);
-                var colorB = ConvertUIColorToColor(b);
-                ImGui.ColorConvertRGBtoHSV(colorA.X, colorA.Y, colorA.Z, out var aH, out var aS, out var aV);
-                ImGui.ColorConvertRGBtoHSV(colorB.X, colorB.Y, colorB.Z, out var bH, out var bS, out var bV);
-
-                var hue = aH.CompareTo(bH);
-                if (hue != 0)
-                {
-                    return hue;
-                }
-
-                var saturation = aS.CompareTo(bS);
-                if (saturation != 0)
-                {
-                    return saturation;
-                }
-
-                var value = aV.CompareTo(bV);
-                return value != 0 ? value : 0;
-            });
-            uiColors = list;
-            PluginLog = pluginLog;
+            this.pluginLog = pluginLog;
         }
 
         public void Dispose()
@@ -243,56 +216,61 @@ namespace FCNameColor
                 ImGui.Separator();
 
                 var groups = configuration.Groups.Keys.Where(a => a != "Other FC" && a != "Default").Prepend("Other FC").Prepend("Default").ToArray();
-                var groupIndex = Array.IndexOf(groups, currentGroup);
 
-                ImGui.Text("Group: ");
-
+                ImGui.Text("Groups");
                 ImGui.SameLine();
-                ImGui.SetNextItemWidth(150f * ImGuiHelpers.GlobalScale);
-                if (ImGui.Combo("###AdditionalFCGroup", ref groupIndex, groups, groups.Length))
-                {
-                    currentGroup = groups[groupIndex];
-                }
 
-                ImGui.SameLine();
                 if (ImGuiComponents.IconButton(FontAwesomeIcon.Plus))
                 {
                     newGroup = "";
                     showAddNewGroup = true;
                 }
 
-                var deletable = !(currentGroup == "Default" || currentGroup == "Other FC");
-
-                ImGui.SameLine();
-
-                if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, deletable ? 1f : 0.5f),
-                    new Vector4(1f, 0, 0, deletable ? 1f : 0.5f), new Vector4(0.9f, 0, 0, deletable ? 1f : 0.5f)) && deletable)
+                using (var groupsPanel = ImRaii.Child("###GroupsPanel", new Vector2(ImGui.GetContentRegionAvail().X, 350.0f * ImGuiHelpers.GlobalScale)))
                 {
-                    if (deletable)
+                    if (groupsPanel)
                     {
-                        PluginLog.Debug($"Deleting group {currentGroup}");
-                        configuration.Groups.Remove(currentGroup);
-
-                        foreach (var playerConfigs in configuration.FCGroups)
+                        foreach (var (groupName, group) in configuration.Groups)
                         {
-                            foreach (var fcGroup in playerConfigs.Value)
+                            var groupColor = group.Color;
+                            if (ImGui.ColorEdit4(groupName, ref groupColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoAlpha))
                             {
-                                if (fcGroup.Value == currentGroup)
+                                var newGroup = configuration.Groups[groupName];
+                                newGroup.Color = groupColor;
+                                configuration.Groups[groupName] = newGroup;
+                                configuration.Save();
+                            }
+
+                            if (groupName != "Default" && groupName != "Other FC")
+                            {
+                                ImGui.SameLine();
+                                using var id = ImRaii.PushId(groupName);
+                                if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, 1f), new Vector4(1f, 0, 0, 1f), new Vector4(0.9f, 0, 0, 1f)))
                                 {
-                                    configuration.FCGroups[playerConfigs.Key][fcGroup.Key] = "Other FC";
+                                    pluginLog.Debug($"Deleting group {groupName}");
+                                    configuration.Groups.Remove(groupName);
+
+                                    foreach (var playerConfigs in configuration.FCGroups)
+                                    {
+                                        foreach (var fcGroup in playerConfigs.Value)
+                                        {
+                                            if (fcGroup.Value == groupName)
+                                            {
+                                                configuration.FCGroups[playerConfigs.Key][fcGroup.Key] = "Other FC";
+                                            }
+                                        }
+                                    }
+
+                                    configuration.Save();
+                                }
+
+                                if (ImGui.IsItemHovered())
+                                {
+                                    ImGui.SetTooltip($"Delete group {groupName}.\nThe groups Default and Other FC cannot be removed.");
                                 }
                             }
                         }
-
-                        currentGroup = "Default";
-                        configuration.Save();
                     }
-
-                }
-
-                if (ImGui.IsItemHovered())
-                {
-                    ImGui.SetTooltip($"Delete group {currentGroup}.\nThe groups Default and Other FC cannot be removed.");
                 }
 
                 if (showAddNewGroup)
@@ -330,62 +308,11 @@ namespace FCNameColor
                             Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1f)
                         });
                         configuration.Save();
-                        currentGroup = newGroup;
                         showAddNewGroup = false;
                     }
 
                     ImGui.End();
                 }
-
-                ImGui.Text("Settings for");
-                ImGui.SameLine();
-                ImGui.TextColored(configuration.Groups[currentGroup].Color, currentGroup);
-                ImGui.ColorButton("Nameplate color. Click on a color below to select a new one.", configuration.Groups[currentGroup].Color);
-                ImGui.SameLine();
-                ImGui.Text("Nameplate color. Click on a color below to set a new one.");
-
-                ImGui.Columns(12, "columns", false);
-                foreach (var z in uiColors)
-                {
-                    if (z.UIForeground is 0 or 255)
-                    {
-                        continue;
-                    }
-
-                    var color = ConvertUIColorToColor(z);
-                    var id = z.RowId.ToString();
-                    var oldCursor = ImGui.GetCursorPos();
-
-                    if (ImGui.ColorButton(id, color))
-                    {
-
-                        var group = configuration.Groups[currentGroup];
-                        group.Color = color;
-                        group.UiColor = id;
-                        configuration.Groups[currentGroup] = group;
-
-
-                        configuration.Save();
-                    }
-
-                    if (id == (configuration.Groups[currentGroup].UiColor))
-                    {
-                        // For the selected colour, render a transparent checkmark on top
-                        var newCursor = ImGui.GetCursorPos();
-                        ImGui.SetCursorPos(oldCursor);
-                        ImGui.PushStyleColor(ImGuiCol.FrameBgActive, Vector4.Zero);
-                        ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, Vector4.Zero);
-                        ImGui.PushStyleColor(ImGuiCol.FrameBg, Vector4.Zero);
-                        var selected = true;
-                        ImGui.Checkbox("", ref selected);
-                        ImGui.PopStyleColor(3);
-                        ImGui.SetCursorPos(newCursor);
-                    }
-
-                    ImGui.NextColumn();
-                }
-
-                ImGui.Columns(1);
             }
 
             ImGui.Separator();
@@ -562,13 +489,13 @@ If something goes wrong trying to fetch the data, you can try again after {(plug
                     if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, 1f),
                             new Vector4(1f, 0, 0, 1f), new Vector4(0.9f, 0, 0, 1f)))
                     {
-                        PluginLog.Debug("Deleting additional FC {fc}", fc.Name);
+                        pluginLog.Debug("Deleting additional FC {fc}", fc.Name);
                         configuration.FCGroups[plugin.PlayerKey].Remove(id);
                         var shouldDeleteFC = !configuration.FCGroups.Any(character => character.Value.ContainsValue(groupName));
                         if (shouldDeleteFC)
                         {
                             configuration.FCs.Remove(fc.ID);
-                            PluginLog.Debug("Removing FC {name} altogether, no settings found anymore.", fc.Name);
+                            pluginLog.Debug("Removing FC {name} altogether, no settings found anymore.", fc.Name);
                         }
                         configuration.Save();
                     }

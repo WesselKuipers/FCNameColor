@@ -6,7 +6,6 @@ using System.Timers;
 using Dalamud.Game;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
-using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using NetStone;
@@ -17,6 +16,8 @@ using Dalamud.Game.ClientState.Objects.Enums;
 using FCNameColor.Config;
 using Dalamud.Game.Gui.NamePlate;
 using Dalamud.Game.Text.SeStringHandling;
+using Lumina.Text;
+using System.Numerics;
 
 namespace FCNameColor
 {
@@ -475,22 +476,21 @@ namespace FCNameColor
             }
         }
 
-        private (SeString, SeString) CreateTextWrap(UInt16 uiColor)
+        private (Dalamud.Game.Text.SeStringHandling.SeString, Dalamud.Game.Text.SeStringHandling.SeString) CreateTextWrap(Vector4 color)
         {
-            var left = new SeStringBuilder();
-            var right = new SeStringBuilder();
+            var left = new Lumina.Text.SeStringBuilder();
+            var right = new Dalamud.Game.Text.SeStringHandling.SeStringBuilder();
 
-            left.AddUiForeground(uiColor);
+            left.PushColorRgba(color);
             right.AddUiForegroundOff();
             
             if (config.Glow)
             {
-                PluginLog.Info(uiColor.ToString());
-                left.AddUiGlow(uiColor);
+                left.PushEdgeColorRgba(color);
                 right.AddUiGlowOff();
             }
 
-            return (left.BuiltString, right.BuiltString);
+            return ((Dalamud.Game.Text.SeStringHandling.SeString)left.ToSeString(), right.BuiltString);
         }
 
         private void NamePlateGui_OnNamePlateUpdate(INamePlateUpdateContext context, IReadOnlyList<INamePlateUpdateHandler> handlers)
@@ -534,7 +534,6 @@ namespace FCNameColor
                     var world = playerCharacter.HomeWorld.GameData.Name;
                     var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value);
                     var color = group.Color;
-                    var uiColor = group.UiColor;
 
                     if (NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
                     {
@@ -558,11 +557,10 @@ namespace FCNameColor
 
                         var trackedGroup = value;
                         color = trackedGroup.Color;
-                        uiColor = trackedGroup.UiColor;
                     }
 
                     var shouldReplaceName = !config.OnlyColorFCTag && !isLocalPlayer;
-                    var wrapper = CreateTextWrap(UInt16.Parse(uiColor));
+                    var wrapper = CreateTextWrap(color);
                     if (!isInDuty && !shouldReplaceName)
                     {
                         handler.FreeCompanyTagParts.OuterWrap = wrapper;
