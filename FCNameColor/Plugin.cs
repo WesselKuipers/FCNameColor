@@ -14,10 +14,10 @@ using NetStone.Search.Character;
 using Dalamud.Plugin.Services;
 using Dalamud.Game.ClientState.Objects.Enums;
 using FCNameColor.Config;
-using Dalamud.Game.Gui.NamePlate;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using FCNameColor.UI;
+using FCNameColor.Nameplates;
 
 namespace FCNameColor
 {
@@ -26,6 +26,11 @@ namespace FCNameColor
         public string Name => "FC Name Color";
         private const string CommandName = "/fcnc";
         private readonly ConfigurationV1 config;
+
+        // TODO: Temporary until this is merged: https://github.com/goatcorp/Dalamud/pull/1915
+        [PluginService] public static IAddonLifecycle AddonLifecycleHandler { get; set; } = null!;
+        [PluginService] public static IGameGui GameGuiHandler { get; set; } = null!;
+        // 
 
         [PluginService] public static IDalamudPluginInterface Pi { get; private set; }
         [PluginService] public static ISigScanner SigScanner { get; private set; }
@@ -37,7 +42,7 @@ namespace FCNameColor
         [PluginService] public static IFramework Framework { get; private set; }
         [PluginService] public static IGameInteropProvider GameInteropProvider { get; private set; }
         [PluginService] public static IPluginLog PluginLog { get; private set; }
-        [PluginService] public static INamePlateGui NamePlateGui {  get; private set; }
+        //[PluginService] public static INamePlateGui NamePlateGui {  get; private set; }
         public readonly WindowSystem WindowSystem = new("FC Name Color");
 
         private Dictionary<uint, string> WorldNames;
@@ -65,6 +70,8 @@ namespace FCNameColor
         public bool SearchingFC;
         public string SearchingFCError = "";
         public bool ConfigOpen => UI.IsOpen;
+
+        NamePlateGui NamePlateGui = new NamePlateGui();
 
         public Plugin(IDataManager dataManager)
         {
