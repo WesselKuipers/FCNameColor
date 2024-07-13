@@ -86,7 +86,7 @@ namespace FCNameColor.Config
         public Dictionary<string, FC> FCs { get; set; } = new();
         #endregion
 
-        [NonSerialized] private DalamudPluginInterface pluginInterface;
+        [NonSerialized] private IDalamudPluginInterface pluginInterface;
         [NonSerialized]
         public static KeyValuePair<string, Group>[] DefaultGroups =
         {
@@ -100,7 +100,7 @@ namespace FCNameColor.Config
             })
         };
 
-        public void Initialize(DalamudPluginInterface pluginInterface)
+        public void Initialize(IDalamudPluginInterface pluginInterface)
         {
             this.pluginInterface = pluginInterface;
         }

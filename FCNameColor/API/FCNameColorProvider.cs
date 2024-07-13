@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Dalamud.Logging;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
+using Dalamud.Plugin.Services;
 
 namespace FCNameColor
 {
@@ -24,7 +24,7 @@ namespace FCNameColor
         private readonly ICallGateProvider<string, string, object> providerAddPlayerToIgnoredPlayers;
         private readonly ICallGateProvider<string, object> providerRemovePlayerFromIgnoredPlayers;
 
-        public FCNameColorProvider(DalamudPluginInterface pluginInterface, IFCNameColorAPI api)
+        public FCNameColorProvider(IDalamudPluginInterface pluginInterface, IFCNameColorAPI api, IPluginLog pluginLog)
         {
             try
             {
@@ -57,7 +57,7 @@ namespace FCNameColor
             }
             catch (Exception ex)
             {
-                PluginLog.LogError($"Error registering IPC provider:\n{ex}");
+                pluginLog.Error($"Error registering IPC provider:\n{ex}");
             }
         }
         

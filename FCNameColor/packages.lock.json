@@ -1,18 +1,12 @@
 {
   "version": 1,
   "dependencies": {
-    "net7.0-windows7.0": {
+    "net8.0-windows7.0": {
       "DalamudPackager": {
         "type": "Direct",
-        "requested": "[2.1.12, )",
-        "resolved": "2.1.12",
-        "contentHash": "Sc0PVxvgg4NQjcI8n10/VfUQBAS4O+Fw2pZrAqBdRMbthYGeogzu5+xmIGCGmsEZ/ukMOBuAqiNiB5qA3MRalg=="
-      },
-      "Pilz.Dalamud": {
-        "type": "Direct",
-        "requested": "[0.5.2.1, )",
-        "resolved": "0.5.2.1",
-        "contentHash": "Sy4eMnNwRMCNgiJnsIZ55le1XRe/K9dJfIVn+yLXj7zzUCTN99obCxfEHvHu2OxIP2DiXOaiZjHBwydidv0Y6Q=="
+        "requested": "[2.1.13, )",
+        "resolved": "2.1.13",
+        "contentHash": "rMN1omGe8536f4xLMvx9NwfvpAc9YFFfeXJ1t4P4PE6Gu8WCIoFliR1sh07hM+bfODmesk/dvMbji7vNI+B/pQ=="
       },
       "HtmlAgilityPack": {
         "type": "Transitive",
