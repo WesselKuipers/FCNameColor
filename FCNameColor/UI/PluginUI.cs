@@ -79,8 +79,8 @@ namespace FCNameColor
                 return;
             }
 
-            ImGui.SetNextWindowSize(new Vector2(380, 550), ImGuiCond.FirstUseEver);
-            ImGui.SetNextWindowSizeConstraints(new Vector2(380, 550), new Vector2(float.MaxValue, float.MaxValue));
+            ImGui.SetNextWindowSize(new Vector2(380, 300), ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSizeConstraints(new Vector2(380, 300), new Vector2(float.MaxValue, float.MaxValue));
             if (ImGui.Begin("FC Name Color Config", ref visible,
                     ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse |
                     ImGuiWindowFlags.AlwaysAutoResize))
@@ -226,7 +226,7 @@ namespace FCNameColor
                     showAddNewGroup = true;
                 }
 
-                using (var groupsPanel = ImRaii.Child("###GroupsPanel", new Vector2(ImGui.GetContentRegionAvail().X, 350.0f * ImGuiHelpers.GlobalScale)))
+                using (var groupsPanel = ImRaii.Child("###GroupsPanel", new Vector2(ImGui.GetContentRegionAvail().X, 300.0f * ImGuiHelpers.GlobalScale)))
                 {
                     if (groupsPanel)
                     {
