@@ -4,13 +4,8 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using FCNameColor.Config;
 using ImGuiNET;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace FCNameColor.UI
 {

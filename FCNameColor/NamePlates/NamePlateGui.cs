@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 
 namespace FCNameColor.Nameplates;

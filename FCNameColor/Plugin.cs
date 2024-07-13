@@ -18,6 +18,7 @@ using System.Numerics;
 using Dalamud.Interface.Windowing;
 using FCNameColor.UI;
 using FCNameColor.Nameplates;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace FCNameColor
 {
