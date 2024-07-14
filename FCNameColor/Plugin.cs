@@ -501,18 +501,18 @@ namespace FCNameColor
         private (Dalamud.Game.Text.SeStringHandling.SeString, Dalamud.Game.Text.SeStringHandling.SeString) CreateTextWrap(Vector4 color)
         {
             var left = new Lumina.Text.SeStringBuilder();
-            var right = new Dalamud.Game.Text.SeStringHandling.SeStringBuilder();
+            var right = new Lumina.Text.SeStringBuilder();
 
             left.PushColorRgba(color);
-            right.AddUiForegroundOff();
-            
+            right.PopColor();
+
             if (config.Glow)
             {
                 left.PushEdgeColorRgba(color);
-                right.AddUiGlowOff();
+                right.PopEdgeColor();
             }
 
-            return ((Dalamud.Game.Text.SeStringHandling.SeString)left.ToSeString(), right.BuiltString);
+            return ((Dalamud.Game.Text.SeStringHandling.SeString)left.ToSeString(), (Dalamud.Game.Text.SeStringHandling.SeString)right.ToSeString());
         }
 
         private void NamePlateGui_OnNamePlateUpdate(INamePlateUpdateContext context, IReadOnlyList<INamePlateUpdateHandler> handlers)
