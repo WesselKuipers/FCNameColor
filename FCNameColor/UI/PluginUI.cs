@@ -86,17 +86,22 @@ namespace FCNameColor
                 ImGui.SameLine();
                 ImGui.TextColored(ImGuiColors.DalamudOrange, "Plugin is disabled during PvP");
             }
-
-            if (plugin.NotInFC)
+            if (plugin.NotFound)
+            {
+                ImGui.SameLine();
+                using (ImRaii.PushColor(ImGuiCol.TextDisabled, ImGuiColors.DalamudOrange))
+                ImGuiComponents.HelpMarker("Could not find player character on Lodestone.\nIf your character is new, please wait a couple of hours for it to show up on Lodestone.\nIf your character is set to private, then the automatic FC fetching won’t work.", FontAwesomeIcon.ExclamationTriangle);
+            }
+            else if (plugin.NotInFC)
             {
                 ImGui.SameLine();
                 ImGui.TextColored(ImGuiColors.DalamudRed, "Character not in FC");
             }
             else if (plugin.Loading && !plugin.Error)
-            {
-                ImGui.SameLine();
-                ImGui.Text(" Fetching FC members from Lodestone...");
-            }
+{
+    ImGui.SameLine();
+    ImGui.Text(" Fetching FC members from Lodestone...");
+}
             else if (plugin.Error)
             {
                 ImGui.SameLine();

@@ -18,7 +18,7 @@ using System.Numerics;
 using Dalamud.Interface.Windowing;
 using FCNameColor.UI;
 using FCNameColor.Nameplates;
-using FFXIVClientStructs.FFXIV.Component.GUI;
+using NetStone.Model.Parseables.Character;
 
 namespace FCNameColor
 {
@@ -63,6 +63,7 @@ namespace FCNameColor
         public const int CooldownTime = 10;
         public int Cooldown;
         public bool NotInFC;
+        public bool NotFound;
         public bool Error;
         public FC? FC;
         public Group FCGroup;
@@ -395,44 +396,42 @@ namespace FCNameColor
                 if (string.IsNullOrEmpty(playerId))
                 {
                     PluginLog.Error("Could not find player on Lodestone");
-                    HandleError(new Exception($"Could not find player {playerId} on Lodestone"));
-                    return;
-                }
-
-                config.PlayerIDs[PlayerKey] = playerId;
-                config.Save();
-            }
-
-            var cachedFCEXists = config.PlayerFCIDs.TryGetValue(playerId, out var cachedFCId);
-            if (cachedFCEXists)
-            {
-                var cachedFCFetched = config.FCs.TryGetValue(cachedFCId, out var cachedFC);
-                FC = cachedFC;
-                if (cachedFCFetched)
+                    NotFound = true;
+                    NotInFC = true;
+                } else
                 {
-                    PluginLog.Debug($"Loaded {cachedFC.Members.Length} cached FC members");
+                    config.PlayerIDs[PlayerKey] = playerId;
+                    config.Save();
                 }
             }
 
-            PluginLog.Debug("Fetching FC ID via character page");
-            var player = await lodestoneClient.GetCharacter(playerId);
-            if (player == null)
-            {
-                PluginLog.Debug(
-                    "Player does not exist on Lodestone. If it’s a new character, try again in a couple of hours.");
-                NotInFC = true;
-                return;
-            }
-
-            if (player.FreeCompany == null)
-            {
-                PluginLog.Debug("Player is not in an FC.");
-                NotInFC = true;
-            }
 
             try
             {
-                if (!NotInFC)
+                LodestoneCharacter player = null;
+                if (!NotFound)
+                {
+                    var cachedFCEXists = config.PlayerFCIDs.TryGetValue(playerId, out var cachedFCId);
+                    if (cachedFCEXists)
+                    {
+                        var cachedFCFetched = config.FCs.TryGetValue(cachedFCId, out var cachedFC);
+                        FC = cachedFC;
+                        if (cachedFCFetched)
+                        {
+                            PluginLog.Debug($"Loaded {cachedFC.Members.Length} cached FC members");
+                        }
+                    }
+
+                    PluginLog.Debug("Fetching FC ID via character page");
+                    player = await lodestoneClient.GetCharacter(playerId);
+                    if (player.FreeCompany == null)
+                    {
+                        PluginLog.Debug("Player is not in an FC.");
+                        NotInFC = true;
+                    }
+                }
+
+                if (player != null && !NotInFC)
                 {
                     var fc = new FC
                     {
@@ -446,19 +445,19 @@ namespace FCNameColor
                     fc.Members = newMembers.ToArray();
                     config.PlayerFCIDs[playerId] = fc.ID;
                     config.FCs[fc.ID] = fc;
-                    PluginLog.Debug($"Finished fetching data. Fetched {fc.Members.Length} members.");
+                    PluginLog.Debug("Finished fetching data. Fetched {length} members.", fc.Members.Length);
                     FC = fc;
 
                     if (!config.FCGroups[PlayerKey].ContainsKey(fc.ID))
                     {
-                        PluginLog.Debug($"Added missing FC Config for own FC.");
+                        PluginLog.Debug("Added missing FC Config for own FC.");
                         config.FCGroups[PlayerKey][fc.ID] = "Default";
                     }
                 }
 
                 if (FirstTime)
                 {
-                    Chat.Print($"[FCNameColor]: First-time setup finished.");
+                    Chat.Print("[FCNameColor]: First-time setup finished.");
                     FirstTime = false;
                 }
 
@@ -517,7 +516,7 @@ namespace FCNameColor
 
         private void NamePlateGui_OnNamePlateUpdate(INamePlateUpdateContext context, IReadOnlyList<INamePlateUpdateHandler> handlers)
         {
-            if (!config.Enabled || !NotInFC && (!FC.HasValue || FC?.Members == null || FC?.Members.Length == 0) || ClientState.IsPvPExcludingDen)
+            if (!config.Enabled || (!NotInFC || !NotFound) && (!FC.HasValue || FC?.Members == null || FC?.Members.Length == 0) || ClientState.IsPvPExcludingDen)
             {
                 return;
             }
@@ -557,7 +556,7 @@ namespace FCNameColor
                     var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value);
                     var color = group.Color;
 
-                    if (NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
+                    if (NotFound || NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
                     {
                         var additionalFCIndex = TrackedFCs.FindIndex(f => f.World == world && f.Members.Any(m => m.Name == name));
                         if (additionalFCIndex < 0)
