@@ -19,6 +19,12 @@ using Dalamud.Interface.Windowing;
 using FCNameColor.UI;
 using FCNameColor.Nameplates;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
+using Dalamud.Game.Addon.Lifecycle;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using static FFXIVClientStructs.FFXIV.Client.UI.AddonNamePlate;
+using static FFXIVClientStructs.FFXIV.Client.UI.AddonNamePlate.NamePlateIntArrayData;
 
 namespace FCNameColor
 {
@@ -144,11 +150,34 @@ namespace FCNameColor
             Framework.Update += OnFrameworkUpdate;
             Pi.UiBuilder.Draw += WindowSystem.Draw;
             Pi.UiBuilder.OpenConfigUi += ToggleConfigUI;
+            AddonLifecycleHandler.RegisterListener(AddonEvent.PreDraw, "NamePlate", OnPreRequestedUpdate);
 
             fcNameColorProvider = new FCNameColorProvider(Pi, new FCNameColorAPI(config, PluginLog), PluginLog);
         }
 
-        private void OnCommand(string command, string args)
+        private unsafe void OnPreRequestedUpdate(AddonEvent type, AddonArgs args)
+        {
+            AddonNamePlate* addonNamePlate = (AddonNamePlate*)RaptureAtkUnitManager.Instance()->GetAddonByName("NamePlate");
+            var x = (NamePlateObjectIntArrayData*)AtkStage.Instance()->AtkArrayDataHolder->GetNumberArrayData(5);
+            UI3DModule* ui3DModule = UIModule.Instance()->GetUI3DModule();
+            for (int i = 0; i < ui3DModule->NamePlateObjectInfoCount; i++)
+            {
+                UI3DModule.ObjectInfo* objectInfo = ui3DModule->NamePlateObjectInfoPointers[i];
+                if (objectInfo->NamePlateObjectKind != UIObjectKind.PlayerCharacter)
+                {
+                    continue; // you could hide all non-player nameplates here if you wanted
+                }
+                BattleChara* battleChara = (BattleChara*)objectInfo->GameObject;
+                // do your logic on the battlechara here; note you can wrap it in the Dalamud type if you want
+                if (!battleChara->IsFriend)
+                {
+                    NamePlateObject* npObject = &addonNamePlate->NamePlateObjectArray[objectInfo->NamePlateIndex];
+                    npObject->RootComponentNode->ToggleVisibility(false);
+                }
+            }
+        }
+
+            private void OnCommand(string command, string args)
         {
             UI.Toggle();
         }
@@ -631,6 +660,7 @@ namespace FCNameColor
                 Framework.Update -= OnFrameworkUpdate;
                 ClientState.Login -= OnLogin;
                 NamePlateGui.OnNamePlateUpdate -= NamePlateGui_OnNamePlateUpdate;
+                AddonLifecycleHandler.UnregisterListener(AddonEvent.PreDraw, "NamePlate", OnPreRequestedUpdate);
             }
             catch (Exception ex)
             {
