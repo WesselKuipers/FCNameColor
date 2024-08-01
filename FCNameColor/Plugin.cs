@@ -592,7 +592,7 @@ namespace FCNameColor
                     {
                         handler.NameParts.TextWrap = wrapper;
 
-                        if (handler.DisplayTitle)
+                        if (handler.DisplayTitle && handler.Title.TextValue.Length > 0)
                         {
                             handler.TitleParts.OuterWrap = wrapper;
                         }
