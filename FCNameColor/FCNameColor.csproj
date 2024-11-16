@@ -6,8 +6,8 @@
     <AssemblyTitle>FCNameColor</AssemblyTitle>
     <Product>FCNameColor</Product>
     <Copyright>Copyright © 2024</Copyright>
-    <AssemblyVersion>5.0.1.0</AssemblyVersion>
-    <FileVersion>5.0.1.0</FileVersion>
+    <AssemblyVersion>5.0.2.0</AssemblyVersion>
+    <FileVersion>5.0.2.0</FileVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <PreserveCompilationContext>false</PreserveCompilationContext>
@@ -30,7 +30,7 @@
     <DalamudLibPath>$(DALAMUD_HOME)/</DalamudLibPath>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="DalamudPackager" Version="2.1.13" />
+    <PackageReference Include="DalamudPackager" Version="11.0.0" />
     <Reference Include="FFXIVClientStructs">
       <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
       <Private>false</Private>

@@ -10,23 +10,9 @@ using Dalamud.Plugin.Services;
 using FCNameColor.Config;
 using FCNameColor.UI;
 using ImGuiNET;
-using Lumina.Excel.GeneratedSheets;
 
 namespace FCNameColor
 {
-    internal class UIColorComparer : IEqualityComparer<UIColor>
-    {
-        public bool Equals(UIColor x, UIColor y)
-        {
-            return x?.UIForeground == y?.UIForeground; // based on variable i
-        }
-
-        public int GetHashCode(UIColor obj)
-        {
-            return obj.UIForeground.GetHashCode(); // hashcode of variable to compare
-        }
-    }
-
     internal class PluginUI : Window
     {
         private readonly Plugin plugin;
