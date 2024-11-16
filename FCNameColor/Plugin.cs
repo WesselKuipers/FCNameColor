@@ -176,7 +176,7 @@ namespace FCNameColor
 
             var lp = ClientState.LocalPlayer;
             playerName = lp.Name.TextValue;
-            worldName = lp.HomeWorld.GameData.Name;
+            worldName = lp.HomeWorld.Value.Name.ToString();
             PlayerKey = $"{playerName}@{worldName}";
 
             loggingIn = false;
@@ -546,7 +546,7 @@ namespace FCNameColor
 
                     if (config.IgnoreFriends && isFriend) { continue; }
 
-                    var world = playerCharacter.HomeWorld.GameData.Name;
+                    var world = playerCharacter.HomeWorld.Value.Name.ToString();
                     var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value);
                     var color = group.Color;
 
