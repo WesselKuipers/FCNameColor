@@ -478,6 +478,7 @@ namespace FCNameColor
 
                         PluginLog.Debug($"Updating FC {fcGroup.Key}");
                         await UpdateFCMembers(fcGroup.Key);
+                        skipCache.Clear();
                     }
                     PluginLog.Debug("Finished loading all FC data.");
                 }
@@ -510,10 +511,7 @@ namespace FCNameColor
 
         private void NamePlateGui_OnNamePlateUpdate(INamePlateUpdateContext context, IReadOnlyList<INamePlateUpdateHandler> handlers)
         {
-            if (!config.Enabled || (!NotInFC || !NotFound) && (!FC.HasValue || FC?.Members == null || FC?.Members.Length == 0) || ClientState.IsPvPExcludingDen)
-            {
-                return;
-            }
+            if (!config.Enabled || ClientState.IsPvPExcludingDen) { return; }
 
             foreach (var handler in handlers)
             {
@@ -539,7 +537,6 @@ namespace FCNameColor
                     // Skip any player who is dead, colouring the name of dead characters makes them harder to recognize.
                     if (playerCharacter.CurrentHp == 0) { continue; }
 
-
                     var isInParty = playerCharacter.StatusFlags.HasFlag(StatusFlags.PartyMember);
                     var isInAlliance = playerCharacter.StatusFlags.HasFlag(StatusFlags.AllianceMember);
                     var isFriend = playerCharacter.StatusFlags.HasFlag(StatusFlags.Friend);
@@ -547,10 +544,14 @@ namespace FCNameColor
                     if (config.IgnoreFriends && isFriend) { continue; }
 
                     var world = playerCharacter.HomeWorld.Value.Name.ToString();
-                    var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value);
-                    var color = group.Color;
+                    var color = config.Groups.First().Value.Color;
 
-                    if (NotFound || NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
+                    var IsFCMember = (!NotFound || !NotInFC) && FC.HasValue && !FC.Value.Members.Any(member => member.Name == name);
+                    if (IsFCMember)
+                    {
+                        color = config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value).Color;
+                    } 
+                    else
                     {
                         var additionalFCIndex = TrackedFCs.FindIndex(f => f.World == world && f.Members.Any(m => m.Name == name));
                         if (additionalFCIndex < 0)
@@ -604,6 +605,7 @@ namespace FCNameColor
                 {
                     PluginLog.Error("Something went wrong when trying to run the nameplate logic.");
                     PluginLog.Error("Error message: {e}", e.Message);
+                    PluginLog.Error("Error message: {e}", e.StackTrace);
                     continue;
                 }
             }
