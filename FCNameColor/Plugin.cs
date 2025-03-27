@@ -544,7 +544,7 @@ namespace FCNameColor
                     if (config.IgnoreFriends && isFriend) { continue; }
 
                     var world = playerCharacter.HomeWorld.Value.Name.ToString();
-                    var color = config.Groups.First().Value.Color;
+                    Vector4? color = null;
 
                     var IsFCMember = (!NotFound || !NotInFC) && FC.HasValue && !FC.Value.Members.Any(member => member.Name == name);
                     if (IsFCMember)
@@ -575,8 +575,13 @@ namespace FCNameColor
                         color = trackedGroup.Color;
                     }
 
+                    if (!color.HasValue)
+                    {
+                        continue;
+                    }
+
                     var shouldReplaceName = !config.OnlyColorFCTag && !isLocalPlayer;
-                    var wrapper = CreateTextWrap(color);
+                    var wrapper = CreateTextWrap(color.Value);
                     if (!isInDuty && !shouldReplaceName)
                     {
                         handler.FreeCompanyTagParts.OuterWrap = wrapper;
