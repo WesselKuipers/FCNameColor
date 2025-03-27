@@ -511,7 +511,10 @@ namespace FCNameColor
 
         private void NamePlateGui_OnNamePlateUpdate(INamePlateUpdateContext context, IReadOnlyList<INamePlateUpdateHandler> handlers)
         {
-            if (!config.Enabled || ClientState.IsPvPExcludingDen) { return; }
+            if (!config.Enabled || (!NotInFC || !NotFound) && (!FC.HasValue || FC?.Members == null || FC?.Members.Length == 0) || ClientState.IsPvPExcludingDen)
+            {
+                return;
+            }
 
             foreach (var handler in handlers)
             {
@@ -544,14 +547,10 @@ namespace FCNameColor
                     if (config.IgnoreFriends && isFriend) { continue; }
 
                     var world = playerCharacter.HomeWorld.Value.Name.ToString();
-                    Vector4? color = null;
+                    var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value);
+                    var color = group.Color;
 
-                    var IsFCMember = (!NotFound || !NotInFC) && FC.HasValue && !FC.Value.Members.Any(member => member.Name == name);
-                    if (IsFCMember)
-                    {
-                        color = config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value).Color;
-                    } 
-                    else
+                    if (NotFound || NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
                     {
                         var additionalFCIndex = TrackedFCs.FindIndex(f => f.World == world && f.Members.Any(m => m.Name == name));
                         if (additionalFCIndex < 0)
@@ -575,13 +574,8 @@ namespace FCNameColor
                         color = trackedGroup.Color;
                     }
 
-                    if (!color.HasValue)
-                    {
-                        continue;
-                    }
-
                     var shouldReplaceName = !config.OnlyColorFCTag && !isLocalPlayer;
-                    var wrapper = CreateTextWrap(color.Value);
+                    var wrapper = CreateTextWrap(color);
                     if (!isInDuty && !shouldReplaceName)
                     {
                         handler.FreeCompanyTagParts.OuterWrap = wrapper;
@@ -610,7 +604,6 @@ namespace FCNameColor
                 {
                     PluginLog.Error("Something went wrong when trying to run the nameplate logic.");
                     PluginLog.Error("Error message: {e}", e.Message);
-                    PluginLog.Error("Error message: {e}", e.StackTrace);
                     continue;
                 }
             }
