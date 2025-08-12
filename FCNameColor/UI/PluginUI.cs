@@ -7,9 +7,9 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Dalamud.Bindings.ImGui;
 using FCNameColor.Config;
 using FCNameColor.UI;
-using ImGuiNET;
 
 namespace FCNameColor
 {

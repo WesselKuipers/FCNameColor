@@ -2,8 +2,8 @@
 using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Dalamud.Bindings.ImGui;
 using FCNameColor.Config;
-using ImGuiNET;
 using System;
 using System.Linq;
 using System.Numerics;
@@ -11,7 +11,7 @@ using Dalamud.Interface.Utility.Raii;
 
 namespace FCNameColor.UI
 {
-    internal class AdditionalFCsWindow : Window 
+    internal class AdditionalFCsWindow : Window
     {
         private readonly ConfigurationV1 configuration;
         private readonly Plugin plugin;

@@ -19,6 +19,8 @@ using Dalamud.Interface.Windowing;
 using FCNameColor.UI;
 using NetStone.Model.Parseables.Character;
 using Dalamud.Game.Gui.NamePlate;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Utility;
 
 namespace FCNameColor
 {
@@ -58,12 +60,20 @@ namespace FCNameColor
         public bool Loading;
         public const int CooldownTime = 10;
         public int Cooldown;
-        public bool NotInFC;
+
+        /// <summary>
+        /// Used to indicate whether or not the player is currently in an FC themselves.
+        /// </summary>
+        public bool NotInFC = true;
+
+        /// <summary>
+        /// Used to indicate whether the current player character currently exists on Lodestone.
+        /// </summary>
         public bool NotFound;
         public bool Error;
         public FC? FC;
         public Group FCGroup;
-        public List<FC> TrackedFCs = new();
+        public List<FC> TrackedFCs = [];
         public string PlayerKey;
         public bool SearchingFC;
         public string SearchingFCError = "";
@@ -139,6 +149,7 @@ namespace FCNameColor
             Framework.Update += OnFrameworkUpdate;
             Pi.UiBuilder.Draw += WindowSystem.Draw;
             Pi.UiBuilder.OpenConfigUi += ToggleConfigUI;
+            Pi.UiBuilder.OpenMainUi += ToggleConfigUI;
 
             fcNameColorProvider = new FCNameColorProvider(Pi, new FCNameColorAPI(config, PluginLog), PluginLog);
         }
@@ -182,11 +193,6 @@ namespace FCNameColor
             loggingIn = false;
             PluginLog.Debug($"Logged in as {PlayerKey}.");
             _ = FetchData();
-        }
-
-        private void DrawUI()
-        {
-            UI.Draw();
         }
 
         public void Reload()
@@ -410,6 +416,7 @@ namespace FCNameColor
                     {
                         var cachedFCFetched = config.FCs.TryGetValue(cachedFCId, out var cachedFC);
                         FC = cachedFC;
+                        NotInFC = false;
                         if (cachedFCFetched)
                         {
                             PluginLog.Debug($"Loaded {cachedFC.Members.Length} cached FC members");
@@ -422,6 +429,9 @@ namespace FCNameColor
                     {
                         PluginLog.Debug("Player is not in an FC.");
                         NotInFC = true;
+                    } else
+                    {
+                        NotInFC = false;
                     }
                 }
 
@@ -492,7 +502,7 @@ namespace FCNameColor
             }
         }
 
-        private (Dalamud.Game.Text.SeStringHandling.SeString, Dalamud.Game.Text.SeStringHandling.SeString) CreateTextWrap(Vector4 color)
+        private (SeString, SeString) CreateTextWrap(Vector4 color)
         {
             var left = new Lumina.Text.SeStringBuilder();
             var right = new Lumina.Text.SeStringBuilder();
@@ -506,12 +516,12 @@ namespace FCNameColor
                 right.PopEdgeColor();
             }
 
-            return ((Dalamud.Game.Text.SeStringHandling.SeString)left.ToSeString(), (Dalamud.Game.Text.SeStringHandling.SeString)right.ToSeString());
+            return (left.ToReadOnlySeString().ToDalamudString(), right.ToReadOnlySeString().ToDalamudString());
         }
 
         private void NamePlateGui_OnNamePlateUpdate(INamePlateUpdateContext context, IReadOnlyList<INamePlateUpdateHandler> handlers)
         {
-            if (!config.Enabled || (!NotInFC || !NotFound) && (!FC.HasValue || FC?.Members == null || FC?.Members.Length == 0) || ClientState.IsPvPExcludingDen)
+            if (!config.Enabled || ClientState.IsPvPExcludingDen)
             {
                 return;
             }
@@ -547,7 +557,7 @@ namespace FCNameColor
                     if (config.IgnoreFriends && isFriend) { continue; }
 
                     var world = playerCharacter.HomeWorld.Value.Name.ToString();
-                    var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC.Value.ID], ConfigurationV1.DefaultGroups[0].Value);
+                    var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC?.ID ?? ""], ConfigurationV1.DefaultGroups[0].Value);
                     var color = group.Color;
 
                     if (NotFound || NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
@@ -576,6 +586,7 @@ namespace FCNameColor
 
                     var shouldReplaceName = !config.OnlyColorFCTag && !isLocalPlayer;
                     var wrapper = CreateTextWrap(color);
+
                     if (!isInDuty && !shouldReplaceName)
                     {
                         handler.FreeCompanyTagParts.OuterWrap = wrapper;

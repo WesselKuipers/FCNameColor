@@ -1,8 +1,8 @@
 ﻿using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Windowing;
+using Dalamud.Bindings.ImGui;
 using FCNameColor.Config;
-using ImGuiNET;
 using System;
 using System.Linq;
 using System.Numerics;
