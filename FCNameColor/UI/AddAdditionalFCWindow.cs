@@ -2,8 +2,8 @@
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
+using Dalamud.Bindings.ImGui;
 using FCNameColor.Config;
-using ImGuiNET;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
