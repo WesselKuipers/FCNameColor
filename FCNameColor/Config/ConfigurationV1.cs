@@ -58,7 +58,7 @@ namespace FCNameColor.Config
         /// <summary>
         /// A mapping of Player ID and their FC’s ID
         /// </summary>
-        public Dictionary<string, string> PlayerFCIDs { get; set; } = new();
+        public Dictionary<string, string?> PlayerFCIDs { get; set; } = new();
 
         /// <summary>
         /// A mapping of player IDs and player names to ignore processing of.
@@ -86,7 +86,7 @@ namespace FCNameColor.Config
         public Dictionary<string, FC> FCs { get; set; } = new();
         #endregion
 
-        [NonSerialized] private IDalamudPluginInterface pluginInterface;
+        [NonSerialized] private IDalamudPluginInterface? pluginInterface;
         [NonSerialized]
         public static KeyValuePair<string, Group>[] DefaultGroups =
         {
@@ -107,7 +107,7 @@ namespace FCNameColor.Config
 
         public void Save()
         {
-            pluginInterface.SavePluginConfig(this);
+            pluginInterface?.SavePluginConfig(this);
         }
     }
 }

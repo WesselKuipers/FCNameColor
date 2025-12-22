@@ -18,7 +18,7 @@ namespace FCNameColor
         /// <summary>
         /// The name of the group this FC is assigned to.
         /// </summary>
-        public string Group;
+        public string? Group;
     }
 
     [Serializable]

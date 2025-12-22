@@ -15,7 +15,7 @@ namespace FCNameColor.UI
         private readonly Plugin plugin;
         private readonly Regex fcUrlPattern = new Regex(@"https:\/\/(eu|na|jp).finalfantasyxiv.com\/lodestone\/freecompany\/(\d{19})\/*");
 
-        private string fcUrl;
+        private string? fcUrl;
 
         public AddAdditionalFCWindow(ConfigurationV1 configuration, Plugin plugin) : base("FC Name Color Config - Adding Additional FC", ImGuiWindowFlags.AlwaysAutoResize)
         {
@@ -68,7 +68,7 @@ namespace FCNameColor.UI
                     var id = match.Groups[2].Value;
                     var shouldContinue = true;
 
-                    if (configuration.PlayerIDs.TryGetValue(plugin.PlayerKey, out var currentPlayerID))
+                    if (plugin.PlayerKey != null && configuration.PlayerIDs.TryGetValue(plugin.PlayerKey, out var currentPlayerID))
                     {
                         if (configuration.PlayerFCIDs.TryGetValue(currentPlayerID, out var playerFC))
                         {
@@ -82,7 +82,7 @@ namespace FCNameColor.UI
 
                     if (shouldContinue)
                     {
-                        if (configuration.FCGroups[plugin.PlayerKey].ContainsKey(id))
+                        if (plugin.PlayerKey != null && configuration.FCGroups[plugin.PlayerKey].ContainsKey(id))
                         {
                             ImGui.OpenPopup("###AddFCDupe");
                         }
@@ -106,7 +106,7 @@ namespace FCNameColor.UI
                 ImGui.TextColored(ImGuiColors.DalamudRed, "Url doesn’t match the FC url format.");
             }
 
-            if (plugin.SearchingFCError.Length > 0)
+            if (plugin.SearchingFCError != null && plugin.SearchingFCError.Length > 0)
             {
                 ImGui.TextColored(ImGuiColors.DalamudRed, plugin.SearchingFCError);
             }

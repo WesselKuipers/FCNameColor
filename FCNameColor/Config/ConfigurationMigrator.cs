@@ -13,9 +13,9 @@ namespace FCNameColor.Config
 {
     public class ConfigurationMigrator
     {
-        private IDalamudPluginInterface pi;
-        private IPluginLog pluginLog;
-        private IChatGui chat;
+        private IDalamudPluginInterface? pi;
+        private IPluginLog? pluginLog;
+        private IChatGui? chat;
 
         public ConfigurationV1 GetConfig(IDalamudPluginInterface pi, IPluginLog pluginLog, IChatGui chat)
         {
@@ -24,7 +24,7 @@ namespace FCNameColor.Config
             this.chat = chat;
 
             var configPath = pi.ConfigFile.FullName;
-            IPluginConfiguration savedConfig;
+            IPluginConfiguration? savedConfig;
 
             if (pi.ConfigFile.Exists)
             {
@@ -78,11 +78,11 @@ namespace FCNameColor.Config
 
             try
             {
-                pluginLog.Info("Migrating from V0 to V1");
+                pluginLog?.Info("Migrating from V0 to V1");
 
-                var path = Path.Combine(pi.GetPluginConfigDirectory(), "FCNameColor.v0.json");
+                var path = Path.Combine(pi?.GetPluginConfigDirectory() ?? string.Empty, "FCNameColor.v0.json");
                 File.WriteAllText(Path.Combine(pi.GetPluginConfigDirectory(), "FCNameColor.v0.json"), JsonConvert.SerializeObject(old));
-                pluginLog.Info("Wrote backup at {path}", path);
+                pluginLog?.Info("Wrote backup at {path}", path);
 
                 result = new ConfigurationV1
                 {
@@ -97,13 +97,13 @@ namespace FCNameColor.Config
                     Enabled = old.Enabled,
                 };
 
-                pluginLog.Info("Imported old flags");
+                pluginLog?.Info("Imported old flags");
 
                 foreach (var (key, value) in old.PlayerFCs)
                 {
                     result.PlayerFCIDs.Add(key, value.ID);
                 }
-                pluginLog.Info("Converted PlayerFCs");
+                pluginLog?.Info("Converted PlayerFCs");
 
                 if (!result.Groups.ContainsKey("Default"))
                 {
@@ -112,7 +112,7 @@ namespace FCNameColor.Config
                         UiColor = old.UiColor, // Inherit from old settings
                         Color = old.Color
                     });
-                    pluginLog.Info("Added Default group with UiColor {a}", old.UiColor);
+                    pluginLog?.Info("Added Default group with UiColor {a}", old.UiColor);
                 }
 
                 if (!result.Groups.ContainsKey("Other FC"))
@@ -122,31 +122,35 @@ namespace FCNameColor.Config
                         UiColor = "52",
                         Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1.0f)
                     });
-                    pluginLog.Info("Added group Other FC");
+                    pluginLog?.Info("Added group Other FC");
                 }
 
                 var mainFCs = new Dictionary<string, FC>();
                 foreach (var fc in old.PlayerFCs)
                 {
-                    if (!mainFCs.ContainsKey(fc.Value.ID))
+                    if (fc.Value.ID != null && !mainFCs.ContainsKey(fc.Value.ID))
                     {
                         mainFCs.Add(fc.Value.ID, fc.Value);
                     }
 
-                    pluginLog.Info("Imported FC {id}", fc.Value.ID);
-
-                    var playerIdFound = old.PlayerIDs.Where(a => a.Value == fc.Key).ToList();
-                    if (playerIdFound.Count > 0)
+                    if (fc.Value.ID != null)
                     {
-                        var playerKey = playerIdFound[0].Key;
+                        pluginLog?.Info("Imported FC {id}", fc.Value.ID);
 
-                        // Assign all previous main FCs for players to the default group.
-                        result.FCGroups[playerKey] = new()
+                        var playerIdFound = old.PlayerIDs.Where(a => a.Value == fc.Key).ToList();
+                        if (playerIdFound.Count > 0)
                         {
-                            [fc.Value.ID] = "Default"
-                        };
+                            var playerKey = playerIdFound[0].Key;
 
-                        pluginLog.Info("Assigned group Default to FC {fc} for player {player}", fc.Value.ID, playerKey);
+                            // Assign all previous main FCs for players to the default group.
+                            result.FCGroups[playerKey] = new()
+                            {
+                                [fc.Value.ID] = "Default"
+                            };
+
+                            pluginLog?.Info("Assigned group Default to FC {fc} for player {player}", fc.Value.ID,
+                                playerKey);
+                        }
                     }
                 }
                 result.FCs = mainFCs;
@@ -156,31 +160,35 @@ namespace FCNameColor.Config
                     if (!result.FCGroups.ContainsKey(playerKey))
                     {
                         result.FCGroups[playerKey] = new();
-                        pluginLog.Info("Created FCGroup entry for player {player}", playerKey);
+                        pluginLog?.Info("Created FCGroup entry for player {player}", playerKey);
                     }
 
                     foreach (var fcConfig in fcConfigs)
                     {
-                        result.FCGroups[playerKey][fcConfig.FC.ID] = fcConfig.Group;
-                        pluginLog.Info("Assigned group {group} to FC {fc} for player {player}", fcConfig.Group, fcConfig.FC.ID, playerKey);
-
-                        if (!result.FCs.ContainsKey(fcConfig.FC.ID))
+                        if (fcConfig.FC.ID != null)
                         {
-                            result.FCs.Add(fcConfig.FC.ID, fcConfig.FC);
-                            pluginLog.Info("Imported FC {id}", fcConfig.FC.ID);
+                            result.FCGroups[playerKey][fcConfig.FC.ID] = fcConfig.Group;
+                            pluginLog?.Info("Assigned group {group} to FC {fc} for player {player}", fcConfig.Group,
+                                fcConfig.FC.ID, playerKey);
+
+                            if (!result.FCs.ContainsKey(fcConfig.FC.ID))
+                            {
+                                result.FCs.Add(fcConfig.FC.ID, fcConfig.FC);
+                                pluginLog?.Info("Imported FC {id}", fcConfig.FC.ID);
+                            }
                         }
                     }
                 }
 
-                pluginLog.Info("Successfully migrated to V1");
+                pluginLog?.Info("Successfully migrated to V1");
             }
             catch (Exception ex)
             {
                 result = new ConfigurationV1();
-                pluginLog.Error("Error when migrating config, returned blank config instead.");
-                pluginLog.Error("Error: {ex}", ex.Message);
-                chat.Print("[FCNameColor]: Something went wrong when migrating the configuration to the next version.");
-                chat.Print("[FCNameColor]: A backup of your old settings has been saved, please send a feedback report with contact info included, or create an issue on GitHub.");
+                pluginLog?.Error("Error when migrating config, returned blank config instead.");
+                pluginLog?.Error("Error: {ex}", ex.Message);
+                chat?.Print("[FCNameColor]: Something went wrong when migrating the configuration to the next version.");
+                chat?.Print("[FCNameColor]: A backup of your old settings has been saved, please send a feedback report with contact info included, or create an issue on GitHub.");
             }
 
             return result;

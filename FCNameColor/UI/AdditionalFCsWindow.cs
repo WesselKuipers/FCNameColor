@@ -51,63 +51,70 @@ namespace FCNameColor.UI
 
             ImGui.Separator();
 
-            if (configuration.FCGroups[plugin.PlayerKey].Count == 0)
+            if (plugin.PlayerKey != null && configuration.FCGroups[plugin.PlayerKey].Count == 0)
             {
                 if (plugin.FC.HasValue)
                 {
-                    configuration.FCGroups[plugin.PlayerKey][plugin.FC.Value.ID] = "Default";
+                    if (plugin.FC.Value.ID != null)
+                        configuration.FCGroups[plugin.PlayerKey][plugin.FC.Value.ID] = "Default";
                 }
 
                 ImGui.Text("There are currently no additional FCs being tracked.");
             }
 
-            foreach (var fcConfigEntry in configuration.FCGroups[plugin.PlayerKey])
-            {
-                var id = fcConfigEntry.Key;
-                var groupName = fcConfigEntry.Value;
-
-                if (!configuration.FCs.ContainsKey(id))
+            if (plugin.PlayerKey != null)
+                foreach (var fcConfigEntry in configuration.FCGroups[plugin.PlayerKey])
                 {
-                    ImGui.Text($"Fetching FC {id}...");
-                    continue;
-                }
+                    var id = fcConfigEntry.Key;
+                    var groupName = fcConfigEntry.Value;
 
-                var fc = configuration.FCs[id];
-
-                using var imguiId = ImRaii.PushId(id);
-                ImGui.Text("Settings for");
-                ImGui.SameLine();
-                ImGui.TextColored(configuration.Groups[groupName].Color, fc.Name);
-                ImGui.ColorButton("", configuration.Groups[groupName].Color);
-                ImGui.SameLine();
-                var groups = configuration.Groups.Keys.ToArray();
-                var groupIndex = Array.IndexOf(groups, groupName);
-                if (ImGui.Combo("###AdditionalFCGroup", ref groupIndex, groups, groups.Length))
-                {
-                    configuration.FCGroups[plugin.PlayerKey][fc.ID] = groups[groupIndex];
-                    configuration.Save();
-                }
-
-                ImGui.SameLine();
-                if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, 1f),
-                        new Vector4(1f, 0, 0, 1f), new Vector4(0.9f, 0, 0, 1f)))
-                {
-                    pluginLog.Debug("Deleting additional FC {fc}", fc.Name);
-                    configuration.FCGroups[plugin.PlayerKey].Remove(id);
-                    var shouldDeleteFC = !configuration.FCGroups.Any(character => character.Value.ContainsValue(groupName));
-                    if (shouldDeleteFC)
+                    if (!configuration.FCs.ContainsKey(id))
                     {
-                        configuration.FCs.Remove(fc.ID);
-                        pluginLog.Debug("Removing FC {name} altogether, no settings found anymore.", fc.Name);
+                        ImGui.Text($"Fetching FC {id}...");
+                        continue;
                     }
-                    configuration.Save();
-                }
 
-                if (ImGui.IsItemHovered())
-                {
-                    ImGui.SetTooltip($"Delete {fc.Name}.");
+                    var fc = configuration.FCs[id];
+
+                    using var imguiId = ImRaii.PushId(id);
+                    ImGui.Text("Settings for");
+                    ImGui.SameLine();
+                    ImGui.TextColored(configuration.Groups[groupName].Color, fc.Name);
+                    ImGui.ColorButton("", configuration.Groups[groupName].Color);
+                    ImGui.SameLine();
+                    var groups = configuration.Groups.Keys.ToArray();
+                    var groupIndex = Array.IndexOf(groups, groupName);
+                    if (ImGui.Combo("###AdditionalFCGroup", ref groupIndex, groups, groups.Length))
+                    {
+                        if (fc.ID != null) configuration.FCGroups[plugin.PlayerKey][fc.ID] = groups[groupIndex];
+                        configuration.Save();
+                    }
+
+                    ImGui.SameLine();
+                    if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, 1f),
+                            new Vector4(1f, 0, 0, 1f), new Vector4(0.9f, 0, 0, 1f)))
+                    {
+                        if (fc.Name != null)
+                        {
+                            pluginLog.Debug("Deleting additional FC {fc}", fc.Name);
+                            configuration.FCGroups[plugin.PlayerKey].Remove(id);
+                            var shouldDeleteFC =
+                                !configuration.FCGroups.Any(character => character.Value.ContainsValue(groupName));
+                            if (shouldDeleteFC)
+                            {
+                                configuration.FCs.Remove(fc.ID);
+                                pluginLog.Debug("Removing FC {name} altogether, no settings found anymore.", fc.Name);
+                            }
+                        }
+
+                        configuration.Save();
+                    }
+
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip($"Delete {fc.Name}.");
+                    }
                 }
-            }
         }
     }
 }
