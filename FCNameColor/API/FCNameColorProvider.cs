@@ -16,13 +16,13 @@ namespace FCNameColor
         private const string LabelProviderAddPlayerToIgnoredPlayers = "FCNameColor.AddPlayerToIgnoredPlayers";
         private const string LabelProviderRemovePlayerFromIgnoredPlayers = "FCNameColor.RemovePlayerFromIgnoredPlayers";
 
-        private readonly ICallGateProvider<int> providerAPIVersion;
-        private readonly ICallGateProvider<IEnumerable<string>> providerGetLocalPlayers;
-        private readonly ICallGateProvider<IEnumerable<string>> providerGetPlayerFCs;
-        private readonly ICallGateProvider<string, IEnumerable<string>> providerGetFCMembers;
-        private readonly ICallGateProvider<IEnumerable<string>> providerGetIgnoredPlayers;
-        private readonly ICallGateProvider<string, string, object> providerAddPlayerToIgnoredPlayers;
-        private readonly ICallGateProvider<string, object> providerRemovePlayerFromIgnoredPlayers;
+        private readonly ICallGateProvider<int>? providerAPIVersion;
+        private readonly ICallGateProvider<IEnumerable<string>>? providerGetLocalPlayers;
+        private readonly ICallGateProvider<IEnumerable<string>>? providerGetPlayerFCs;
+        private readonly ICallGateProvider<string, IEnumerable<string>>? providerGetFCMembers;
+        private readonly ICallGateProvider<IEnumerable<string>>? providerGetIgnoredPlayers;
+        private readonly ICallGateProvider<string, string, object>? providerAddPlayerToIgnoredPlayers;
+        private readonly ICallGateProvider<string, object>? providerRemovePlayerFromIgnoredPlayers;
 
         public FCNameColorProvider(IDalamudPluginInterface pluginInterface, IFCNameColorAPI api, IPluginLog pluginLog)
         {

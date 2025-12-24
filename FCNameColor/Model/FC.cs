@@ -11,17 +11,17 @@ namespace FCNameColor
         /// <summary>
         /// The Lodestone ID if the FC
         /// </summary>
-        public string ID;
+        public string? ID;
         
         /// <summary>
         /// The name of the FC
         /// </summary>
-        public string Name;
+        public string? Name;
         
         /// <summary>
         /// The World of the FC.
         /// </summary>
-        public string World;
+        public string? World;
         
         /// <summary>
         /// The list of FC members
@@ -56,7 +56,7 @@ namespace FCNameColor
     /// <summary>
     /// A representation of an FC’s member.
     /// </summary>
-    public struct FCMember
+    public record struct FCMember
     {
         /// <summary>
         /// The Lodestone ID of the member.

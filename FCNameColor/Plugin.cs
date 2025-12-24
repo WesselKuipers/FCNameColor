@@ -15,6 +15,7 @@ using Dalamud.Plugin.Services;
 using Dalamud.Game.ClientState.Objects.Enums;
 using FCNameColor.Config;
 using System.Numerics;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Interface.Windowing;
 using FCNameColor.UI;
 using NetStone.Model.Parseables.Character;
@@ -30,30 +31,32 @@ namespace FCNameColor
         private const string CommandName = "/fcnc";
         private readonly ConfigurationV1 config;
 
-        [PluginService] public static IDalamudPluginInterface Pi { get; private set; }
-        [PluginService] public static ISigScanner SigScanner { get; private set; }
-        [PluginService] public static IClientState ClientState { get; private set; }
-        [PluginService] public static IChatGui Chat { get; private set; }
-        [PluginService] public static ICondition Condition { get; private set; }
-        [PluginService] public static IObjectTable Objects { get; private set; }
-        [PluginService] public static ICommandManager Commands { get; private set; }
-        [PluginService] public static IFramework Framework { get; private set; }
-        [PluginService] public static IGameInteropProvider GameInteropProvider { get; private set; }
-        [PluginService] public static IPluginLog PluginLog { get; private set; }
-        [PluginService] public static INamePlateGui NamePlateGui { get; private set; }
+        [PluginService] public static IDalamudPluginInterface Pi { get; private set; } = null!;
+        [PluginService] public static ISigScanner SigScanner { get; private set; } = null!;
+        [PluginService] public static IClientState ClientState { get; private set; } = null!;
+        [PluginService] public static IChatGui Chat { get; private set; } = null!;
+        [PluginService] public static ICondition Condition { get; private set; } = null!;
+        [PluginService] public static IObjectTable Objects { get; private set; } = null!;
+        [PluginService] public static ICommandManager Commands { get; private set; } = null!;
+        [PluginService] public static IFramework Framework { get; private set; } = null!;
+        [PluginService] public static IGameInteropProvider GameInteropProvider { get; private set; } = null!;
+        [PluginService] public static IPluginLog PluginLog { get; private set; } = null!;
+        [PluginService] public static INamePlateGui NamePlateGui { get; private set; } = null!;
+        [PluginService] 
+        public static IObjectTable ObjectTable { get; private set; } = null!;
 
         public readonly WindowSystem WindowSystem = new("FC Name Color");
 
-        private Dictionary<uint, string> WorldNames;
-        private LodestoneClient lodestoneClient;
+        private Dictionary<uint, string>? WorldNames;
+        private LodestoneClient? lodestoneClient;
         private readonly FCNameColorProvider fcNameColorProvider;
 
         private PluginUI UI { get; }
         private bool loggingIn;
         private readonly Timer timer = new() { Interval = 1000 };
         private bool initialized;
-        private string playerName;
-        private string worldName;
+        private string? playerName;
+        private string? worldName;
         private readonly HashSet<uint> skipCache = new();
 
         public bool FirstTime;
@@ -74,9 +77,9 @@ namespace FCNameColor
         public FC? FC;
         public Group FCGroup;
         public List<FC> TrackedFCs = [];
-        public string PlayerKey;
+        public string? PlayerKey;
         public bool SearchingFC;
-        public string SearchingFCError = "";
+        public string? SearchingFCError = "";
         public bool ConfigOpen => UI.IsOpen;
 
         public Plugin(IDataManager dataManager)
@@ -175,7 +178,7 @@ namespace FCNameColor
 
         private void OnFrameworkUpdate(IFramework framework)
         {
-            if (ClientState.LocalPlayer == null)
+            if ((ObjectTable[0] as IPlayerCharacter) == null)
             {
                 return;
             }
@@ -185,9 +188,9 @@ namespace FCNameColor
                 return;
             }
 
-            var lp = ClientState.LocalPlayer;
-            playerName = lp.Name.TextValue;
-            worldName = lp.HomeWorld.Value.Name.ToString();
+            var lp = (ObjectTable[0] as IPlayerCharacter);
+            playerName = lp?.Name.TextValue;
+            worldName = lp?.HomeWorld.Value.Name.ToString();
             PlayerKey = $"{playerName}@{worldName}";
 
             loggingIn = false;
@@ -237,12 +240,12 @@ namespace FCNameColor
                     return false;
                 }
 
-                if (!config.FCGroups.ContainsKey(PlayerKey))
+                if (PlayerKey != null && !config.FCGroups.ContainsKey(PlayerKey))
                 {
                     config.FCGroups.Add(PlayerKey, new());
                 }
 
-                config.FCGroups[PlayerKey][id] = group;
+                if (PlayerKey != null) config.FCGroups[PlayerKey][id] = group;
 
                 config.Save();
                 SearchingFC = false;
@@ -268,27 +271,30 @@ namespace FCNameColor
                 var fcExists = config.FCs.TryGetValue(id, out var fc);
                 if (!fcExists)
                 {
-                    var fetchedFC = await lodestoneClient.GetFreeCompany(id);
+                    var fetchedFC = await lodestoneClient?.GetFreeCompany(id);
                     fc = new FC
                     {
-                        ID = fetchedFC.Id,
-                        Name = fetchedFC.Name,
+                        ID = fetchedFC?.Id,
+                        Name = fetchedFC?.Name,
                         LastUpdated = DateTime.Now,
-                        World = fetchedFC.World,
+                        World = fetchedFC?.World,
                     };
                 }
                 var m = await FetchFCMembers(id);
                 fc.Members = m.ToArray();
-                config.FCs[fc.ID] = fc;
+                if (fc.ID != null)
+                {
+                    config.FCs[fc.ID] = fc;
 
-                var trackedFCIndex = TrackedFCs.FindIndex(f => fc.ID == f.ID);
-                if (trackedFCIndex >= 0)
-                {
-                    TrackedFCs[trackedFCIndex] = fc;
-                }
-                else
-                {
-                    TrackedFCs.Add(fc);
+                    var trackedFCIndex = TrackedFCs.FindIndex(f => fc.ID == f.ID);
+                    if (trackedFCIndex >= 0)
+                    {
+                        TrackedFCs[trackedFCIndex] = fc;
+                    }
+                    else
+                    {
+                        TrackedFCs.Add(fc);
+                    }
                 }
 
                 config.Save();
@@ -307,7 +313,7 @@ namespace FCNameColor
             // Fetch the first page of FC members.
             // This will also contain the amount of additional pages of members that may have to be retrieved.
             PluginLog.Debug($"Fetching FC {id} members page 1");
-            var fcMemberResult = await lodestoneClient.GetFreeCompanyMembers(id);
+            var fcMemberResult = await lodestoneClient?.GetFreeCompanyMembers(id)!;
             if (fcMemberResult == null)
             {
                 return new List<FCMember>(Array.Empty<FCMember>());
@@ -323,7 +329,7 @@ namespace FCNameColor
             foreach (var index in Enumerable.Range(2, fcMemberResult.NumPages - 1))
             {
                 PluginLog.Debug($"Fetching FC {id} members page {index}");
-                taskList.Add(lodestoneClient.GetFreeCompanyMembers(id, index));
+                taskList.Add(lodestoneClient.GetFreeCompanyMembers(id, index)!);
             }
 
             await Task.WhenAll(taskList);
@@ -357,21 +363,22 @@ namespace FCNameColor
             lodestoneClient ??= await LodestoneClient.GetClientAsync();
 
             PluginLog.Debug($"Fetching data for {PlayerKey}");
-            if (!config.FCGroups.ContainsKey(PlayerKey))
+            if (PlayerKey != null && !config.FCGroups.ContainsKey(PlayerKey))
             {
                 config.FCGroups.Add(PlayerKey, new());
             }
 
             {
                 var trackedFCs = new List<FC>();
-                foreach (var fcConfig in config.FCGroups[PlayerKey])
-                {
-                    var foundTrackedFc = config.FCs.TryGetValue(fcConfig.Key, out var trackedFC);
-                    if (foundTrackedFc)
+                if (PlayerKey != null)
+                    foreach (var fcConfig in config.FCGroups[PlayerKey])
                     {
-                        trackedFCs.Add(trackedFC);
+                        var foundTrackedFc = config.FCs.TryGetValue(fcConfig.Key, out var trackedFC);
+                        if (foundTrackedFc)
+                        {
+                            trackedFCs.Add(trackedFC);
+                        }
                     }
-                }
 
                 if (trackedFCs.Count > 0)
                 {
@@ -381,124 +388,138 @@ namespace FCNameColor
                 TrackedFCs = trackedFCs;
             }
 
-            config.PlayerIDs.TryGetValue(PlayerKey, out var playerId);
-            if (string.IsNullOrEmpty(playerId))
+            if (PlayerKey != null)
             {
-                PluginLog.Debug("Fetching character ID");
-                var playerSearch = await lodestoneClient.SearchCharacter(
-                    new CharacterSearchQuery
-                    {
-                        World = worldName,
-                        CharacterName = $"\"{playerName}\""
-                    });
-                playerId = playerSearch?.Results
-                    .FirstOrDefault(entry => entry.Name == playerName)?.Id;
+                config.PlayerIDs.TryGetValue(PlayerKey, out var playerId);
                 if (string.IsNullOrEmpty(playerId))
                 {
-                    PluginLog.Error("Could not find player on Lodestone");
-                    NotFound = true;
-                    NotInFC = true;
-                } else
-                {
-                    config.PlayerIDs[PlayerKey] = playerId;
-                    config.Save();
-                }
-            }
-
-
-            try
-            {
-                LodestoneCharacter player = null;
-                if (!NotFound)
-                {
-                    var cachedFCEXists = config.PlayerFCIDs.TryGetValue(playerId, out var cachedFCId);
-                    if (cachedFCEXists)
-                    {
-                        var cachedFCFetched = config.FCs.TryGetValue(cachedFCId, out var cachedFC);
-                        FC = cachedFC;
-                        NotInFC = false;
-                        if (cachedFCFetched)
+                    PluginLog.Debug("Fetching character ID");
+                    var playerSearch = await lodestoneClient.SearchCharacter(
+                        new CharacterSearchQuery
                         {
-                            PluginLog.Debug($"Loaded {cachedFC.Members.Length} cached FC members");
-                        }
-                    }
-
-                    PluginLog.Debug("Fetching FC ID via character page");
-                    player = await lodestoneClient.GetCharacter(playerId);
-                    if (player.FreeCompany == null)
+                            World = worldName,
+                            CharacterName = $"\"{playerName}\""
+                        });
+                    playerId = playerSearch?.Results
+                        .FirstOrDefault(entry => entry.Name == playerName)?.Id;
+                    if (string.IsNullOrEmpty(playerId))
                     {
-                        PluginLog.Debug("Player is not in an FC.");
+                        PluginLog.Error("Could not find player on Lodestone");
+                        NotFound = true;
                         NotInFC = true;
-                    } else
+                    }
+                    else
                     {
-                        NotInFC = false;
+                        config.PlayerIDs[PlayerKey] = playerId;
+                        config.Save();
                     }
                 }
 
-                if (player != null && !NotInFC)
+
+                try
                 {
-                    var fc = new FC
+                    LodestoneCharacter? player = null;
+                    if (!NotFound)
                     {
-                        ID = player.FreeCompany.Id,
-                        Name = player.FreeCompany.Name,
-                        World = worldName,
-                        LastUpdated = DateTime.Now
-                    };
-
-                    var newMembers = await FetchFCMembers(fc.ID);
-                    fc.Members = newMembers.ToArray();
-                    config.PlayerFCIDs[playerId] = fc.ID;
-                    config.FCs[fc.ID] = fc;
-                    PluginLog.Debug("Finished fetching data. Fetched {length} members.", fc.Members.Length);
-                    FC = fc;
-
-                    if (!config.FCGroups[PlayerKey].ContainsKey(fc.ID))
-                    {
-                        PluginLog.Debug("Added missing FC Config for own FC.");
-                        config.FCGroups[PlayerKey][fc.ID] = "Default";
-                    }
-                }
-
-                if (FirstTime)
-                {
-                    Chat.Print("[FCNameColor]: First-time setup finished.");
-                    FirstTime = false;
-                }
-
-                config.Save();
-                Loading = false;
-
-                var fcGroups = config.FCGroups[PlayerKey];
-
-                async void ScheduleFCUpdates()
-                {
-                    PluginLog.Debug("Scheduling additional FC updates");
-                    foreach (var fcGroup in fcGroups.Where(f => FC.HasValue ? FC.Value.ID != f.Key : true))
-                    {
-                        var additionalFCFetched = config.FCs.TryGetValue(fcGroup.Key, out var additionalFC);
-                        if (additionalFCFetched && (DateTime.Now - additionalFC.LastUpdated).TotalHours < 1)
+                        var cachedFCEXists = config.PlayerFCIDs.TryGetValue(playerId, out var cachedFCId);
+                        if (cachedFCEXists)
                         {
-                            PluginLog.Debug(
-                                $"Skipping updating {additionalFC.Name}, it was updated less than 2 hours ago.");
-                            continue;
+                            var cachedFCFetched = config.FCs.TryGetValue(cachedFCId, out var cachedFC);
+                            FC = cachedFC;
+                            NotInFC = false;
+                            if (cachedFCFetched)
+                            {
+                                PluginLog.Debug($"Loaded {cachedFC.Members.Length} cached FC members");
+                            }
                         }
 
-                        PluginLog.Debug($"Waiting 30 seconds before updating FC {fcGroup.Key}");
-                        await Task.Delay(30000);
-
-                        PluginLog.Debug($"Updating FC {fcGroup.Key}");
-                        await UpdateFCMembers(fcGroup.Key);
-                        skipCache.Clear();
+                        PluginLog.Debug("Fetching FC ID via character page");
+                        player = await lodestoneClient.GetCharacter(playerId);
+                        if (player?.FreeCompany == null)
+                        {
+                            PluginLog.Debug("Player is not in an FC.");
+                            NotInFC = true;
+                        }
+                        else
+                        {
+                            NotInFC = false;
+                        }
                     }
-                    PluginLog.Debug("Finished loading all FC data.");
-                }
 
-                skipCache.Clear();
-                new Task(ScheduleFCUpdates).Start();
-            }
-            catch (Exception e)
-            {
-                HandleError(e);
+                    if (player != null && !NotInFC)
+                    {
+                        var fc = new FC
+                        {
+                            ID = player.FreeCompany?.Id,
+                            Name = player.FreeCompany?.Name,
+                            World = worldName,
+                            LastUpdated = DateTime.Now
+                        };
+
+                        if (fc.ID != null)
+                        {
+                            var newMembers = await FetchFCMembers(fc.ID);
+                            fc.Members = newMembers.ToArray();
+                        }
+
+                        if (playerId != null) config.PlayerFCIDs[playerId] = fc.ID;
+                        if (fc.ID != null)
+                        {
+                            config.FCs[fc.ID] = fc;
+                            if (fc.Members != null)
+                                PluginLog.Debug("Finished fetching data. Fetched {length} members.", fc.Members.Length);
+                            FC = fc;
+
+                            if (!config.FCGroups[PlayerKey].ContainsKey(fc.ID))
+                            {
+                                PluginLog.Debug("Added missing FC Config for own FC.");
+                                config.FCGroups[PlayerKey][fc.ID] = "Default";
+                            }
+                        }
+                    }
+
+                    if (FirstTime)
+                    {
+                        Chat.Print("[FCNameColor]: First-time setup finished.");
+                        FirstTime = false;
+                    }
+
+                    config.Save();
+                    Loading = false;
+
+                    var fcGroups = config.FCGroups[PlayerKey];
+
+                    async void ScheduleFCUpdates()
+                    {
+                        PluginLog.Debug("Scheduling additional FC updates");
+                        foreach (var fcGroup in fcGroups.Where(f => FC.HasValue ? FC.Value.ID != f.Key : true))
+                        {
+                            var additionalFCFetched = config.FCs.TryGetValue(fcGroup.Key, out var additionalFC);
+                            if (additionalFCFetched && (DateTime.Now - additionalFC.LastUpdated).TotalHours < 1)
+                            {
+                                PluginLog.Debug(
+                                    $"Skipping updating {additionalFC.Name}, it was updated less than 2 hours ago.");
+                                continue;
+                            }
+
+                            PluginLog.Debug($"Waiting 30 seconds before updating FC {fcGroup.Key}");
+                            await Task.Delay(30000);
+
+                            PluginLog.Debug($"Updating FC {fcGroup.Key}");
+                            await UpdateFCMembers(fcGroup.Key);
+                            skipCache.Clear();
+                        }
+
+                        PluginLog.Debug("Finished loading all FC data.");
+                    }
+
+                    skipCache.Clear();
+                    new Task(ScheduleFCUpdates).Start();
+                }
+                catch (Exception e)
+                {
+                    HandleError(e);
+                }
             }
         }
 
@@ -541,7 +562,7 @@ namespace FCNameColor
                     if (skipCache.Contains(entityId)) { continue; }
                     if (config.IgnoredPlayers.ContainsKey(name)) { continue; }
 
-                    var isLocalPlayer = ClientState?.LocalPlayer?.EntityId == entityId;
+                    var isLocalPlayer = (ObjectTable[0] as IPlayerCharacter).EntityId == entityId;
                     var isInDuty = Condition[ConditionFlag.BoundByDuty56];
 
                     if (isInDuty && isLocalPlayer) { continue; }
@@ -557,53 +578,56 @@ namespace FCNameColor
                     if (config.IgnoreFriends && isFriend) { continue; }
 
                     var world = playerCharacter.HomeWorld.Value.Name.ToString();
-                    var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC?.ID ?? ""], ConfigurationV1.DefaultGroups[0].Value);
-                    var color = group.Color;
-
-                    if (NotFound || NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
+                    if (PlayerKey != null)
                     {
-                        var additionalFCIndex = TrackedFCs.FindIndex(f => f.World == world && f.Members.Any(m => m.Name == name));
-                        if (additionalFCIndex < 0)
+                        var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC?.ID ?? ""], ConfigurationV1.DefaultGroups[0].Value);
+                        var color = group.Color;
+
+                        if (NotFound || NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
                         {
-                            // This player isn’t an FC member or in one of the tracked FCs.
-                            // We can skip it in future calls.
-                            PluginLog.Debug("Adding {name} ({id}) to skip cache", name, entityId);
-                            skipCache.Add(entityId);
-                            continue;
+                            var additionalFCIndex = TrackedFCs.FindIndex(f => f.World == world && f.Members.Any(m => m.Name == name));
+                            if (additionalFCIndex < 0)
+                            {
+                                // This player isn’t an FC member or in one of the tracked FCs.
+                                // We can skip it in future calls.
+                                PluginLog.Debug("Adding {name} ({id}) to skip cache", name, entityId);
+                                skipCache.Add(entityId);
+                                continue;
+                            }
+
+                            var id = TrackedFCs[additionalFCIndex].ID;
+                            var groupName = id != null && config.FCGroups[PlayerKey].ContainsKey(id) ? config.FCGroups[PlayerKey][id] : "Default";
+                            if (!config.Groups.TryGetValue(groupName, out Group value))
+                            {
+                                value = ConfigurationV1.DefaultGroups[1].Value;
+                                config.Groups.Add(groupName, value);
+                            }
+
+                            var trackedGroup = value;
+                            color = trackedGroup.Color;
                         }
 
-                        var id = TrackedFCs[additionalFCIndex].ID;
-                        var groupName = config.FCGroups[PlayerKey].ContainsKey(id) ? config.FCGroups[PlayerKey][id] : "Default";
-                        if (!config.Groups.TryGetValue(groupName, out Group value))
-                        {
-                            value = ConfigurationV1.DefaultGroups[1].Value;
-                            config.Groups.Add(groupName, value);
-                        }
+                        var shouldReplaceName = !config.OnlyColorFCTag && !isLocalPlayer;
+                        var wrapper = CreateTextWrap(color);
 
-                        var trackedGroup = value;
-                        color = trackedGroup.Color;
-                    }
-
-                    var shouldReplaceName = !config.OnlyColorFCTag && !isLocalPlayer;
-                    var wrapper = CreateTextWrap(color);
-
-                    if (!isInDuty && !shouldReplaceName)
-                    {
-                        handler.FreeCompanyTagParts.OuterWrap = wrapper;
-                    }
-
-                    if ((isInDuty && config.IncludeDuties) || shouldReplaceName)
-                    {
-                        handler.NameParts.TextWrap = wrapper;
-
-                        if (handler.DisplayTitle && handler.Title.TextValue.Length > 0)
-                        {
-                            handler.TitleParts.OuterWrap = wrapper;
-                        }
-
-                        if (!isInDuty)
+                        if (!isInDuty && !shouldReplaceName)
                         {
                             handler.FreeCompanyTagParts.OuterWrap = wrapper;
+                        }
+
+                        if ((isInDuty && config.IncludeDuties) || shouldReplaceName)
+                        {
+                            handler.NameParts.TextWrap = wrapper;
+
+                            if (handler.DisplayTitle && handler.Title.TextValue.Length > 0)
+                            {
+                                handler.TitleParts.OuterWrap = wrapper;
+                            }
+
+                            if (!isInDuty)
+                            {
+                                handler.FreeCompanyTagParts.OuterWrap = wrapper;
+                            }
                         }
                     }
 

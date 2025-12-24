@@ -13,7 +13,7 @@ namespace FCNameColor.UI
     {
         private readonly ConfigurationV1 configuration;
         private readonly Plugin plugin;
-        private string newGroup;
+        private string? newGroup;
 
         public AddNewGroupWindow(ConfigurationV1 configuration, Plugin plugin) : base("FC Name Color Config - Add new group", ImGuiWindowFlags.AlwaysAutoResize)
         {
@@ -33,12 +33,12 @@ namespace FCNameColor.UI
         {
             var groups = configuration.Groups.Keys.Where(a => a != "Other FC" && a != "Default").Prepend("Other FC").Prepend("Default").ToArray();
             var exists = groups.Contains(newGroup);
-            var add = ImGui.InputTextWithHint("###NewGroup", "Your group name", ref newGroup, 50,
+            var add = newGroup != null && ImGui.InputTextWithHint("###NewGroup", "Your group name", ref newGroup, 50,
                 ImGuiInputTextFlags.EnterReturnsTrue) && newGroup.Length > 1;
 
             ImGui.SameLine();
 
-            if (newGroup.Length == 0 || exists)
+            if (newGroup != null && (newGroup.Length == 0 || exists))
             {
                 ImGuiComponents.DisabledButton("Add Group");
             }
@@ -57,11 +57,12 @@ namespace FCNameColor.UI
 
             if (add)
             {
-                configuration.Groups.Add(newGroup, new Group
-                {
-                    UiColor = "52",
-                    Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1f)
-                });
+                if (newGroup != null)
+                    configuration.Groups.Add(newGroup, new Group
+                    {
+                        UiColor = "52",
+                        Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1f)
+                    });
                 configuration.Save();
                 IsOpen = false;
             }
