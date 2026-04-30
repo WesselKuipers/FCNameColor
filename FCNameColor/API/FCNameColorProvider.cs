@@ -28,32 +28,32 @@ namespace FCNameColor
         {
             try
             {
-                this.providerAPIVersion = pluginInterface.GetIpcProvider<int>(LabelProviderApiVersion);
-                this.providerAPIVersion.RegisterFunc(() => api.APIVersion);
+                providerAPIVersion = pluginInterface.GetIpcProvider<int>(LabelProviderApiVersion);
+                providerAPIVersion.RegisterFunc(() => api.APIVersion);
                 
-                this.providerGetLocalPlayers =
+                providerGetLocalPlayers =
                     pluginInterface.GetIpcProvider<IEnumerable<string>>(LabelProviderGetLocalPlayers);
-                this.providerGetLocalPlayers.RegisterFunc(api.GetLocalPlayers);
+                providerGetLocalPlayers.RegisterFunc(api.GetLocalPlayers);
                 
-                this.providerGetPlayerFCs =
+                providerGetPlayerFCs =
                     pluginInterface.GetIpcProvider<IEnumerable<string>>(LabelProviderGetPlayerFCs);
-                this.providerGetPlayerFCs.RegisterFunc(api.GetPlayerFCs);
+                providerGetPlayerFCs.RegisterFunc(api.GetPlayerFCs);
                 
-                this.providerGetFCMembers =
+                providerGetFCMembers =
                     pluginInterface.GetIpcProvider<string, IEnumerable<string>>(LabelProviderGetFCMembers);
-                this.providerGetFCMembers.RegisterFunc(api.GetFCMembers);
+                providerGetFCMembers.RegisterFunc(api.GetFCMembers);
                 
-                this.providerGetIgnoredPlayers =
+                providerGetIgnoredPlayers =
                     pluginInterface.GetIpcProvider<IEnumerable<string>>(LabelProviderGetIgnoredPlayers);
-                this.providerGetIgnoredPlayers.RegisterFunc(api.GetIgnoredPlayers);
+                providerGetIgnoredPlayers.RegisterFunc(api.GetIgnoredPlayers);
                 
-                this.providerAddPlayerToIgnoredPlayers =
+                providerAddPlayerToIgnoredPlayers =
                     pluginInterface.GetIpcProvider<string, string, object>(LabelProviderAddPlayerToIgnoredPlayers);
-                this.providerAddPlayerToIgnoredPlayers.RegisterAction(api.AddPlayerToIgnoredPlayers);
+                providerAddPlayerToIgnoredPlayers.RegisterAction(api.AddPlayerToIgnoredPlayers);
                 
-                this.providerRemovePlayerFromIgnoredPlayers =
+                providerRemovePlayerFromIgnoredPlayers =
                     pluginInterface.GetIpcProvider<string, object>(LabelProviderRemovePlayerFromIgnoredPlayers);
-                this.providerRemovePlayerFromIgnoredPlayers.RegisterAction(api.RemovePlayerFromIgnoredPlayers);
+                providerRemovePlayerFromIgnoredPlayers.RegisterAction(api.RemovePlayerFromIgnoredPlayers);
             }
             catch (Exception ex)
             {
@@ -63,13 +63,13 @@ namespace FCNameColor
         
         public void Dispose()
         {
-            this.providerAPIVersion?.UnregisterFunc();
-            this.providerGetLocalPlayers?.UnregisterFunc();
-            this.providerGetPlayerFCs?.UnregisterFunc();
-            this.providerGetFCMembers?.UnregisterFunc();
-            this.providerGetIgnoredPlayers?.UnregisterFunc();
-            this.providerAddPlayerToIgnoredPlayers?.UnregisterAction();
-            this.providerRemovePlayerFromIgnoredPlayers?.UnregisterAction();
+            providerAPIVersion?.UnregisterFunc();
+            providerGetLocalPlayers?.UnregisterFunc();
+            providerGetPlayerFCs?.UnregisterFunc();
+            providerGetFCMembers?.UnregisterFunc();
+            providerGetIgnoredPlayers?.UnregisterFunc();
+            providerAddPlayerToIgnoredPlayers?.UnregisterAction();
+            providerRemovePlayerFromIgnoredPlayers?.UnregisterAction();
         }
     }
 }

@@ -22,6 +22,7 @@ using NetStone.Model.Parseables.Character;
 using Dalamud.Game.Gui.NamePlate;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Utility;
+using FCNameColor.API;
 
 namespace FCNameColor
 {
@@ -46,8 +47,6 @@ namespace FCNameColor
         public static IObjectTable ObjectTable { get; private set; } = null!;
 
         public readonly WindowSystem WindowSystem = new("FC Name Color");
-
-        private Dictionary<uint, string>? WorldNames;
         private LodestoneClient? lodestoneClient;
         private readonly FCNameColorProvider fcNameColorProvider;
 
@@ -316,7 +315,7 @@ namespace FCNameColor
             var fcMemberResult = await lodestoneClient?.GetFreeCompanyMembers(id)!;
             if (fcMemberResult == null)
             {
-                return new List<FCMember>(Array.Empty<FCMember>());
+                return [];
             }
 
             var newMembers = new List<FCMember>();
@@ -421,8 +420,8 @@ namespace FCNameColor
                     LodestoneCharacter? player = null;
                     if (!NotFound)
                     {
-                        var cachedFCEXists = config.PlayerFCIDs.TryGetValue(playerId, out var cachedFCId);
-                        if (cachedFCEXists)
+                        var cachedFCExists = config.PlayerFCIDs.TryGetValue(playerId, out var cachedFCId);
+                        if (cachedFCExists)
                         {
                             var cachedFCFetched = config.FCs.TryGetValue(cachedFCId, out var cachedFC);
                             FC = cachedFC;
