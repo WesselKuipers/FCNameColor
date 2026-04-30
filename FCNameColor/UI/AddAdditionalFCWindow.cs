@@ -9,19 +9,12 @@ using System.Text.RegularExpressions;
 
 namespace FCNameColor.UI
 {
-    internal class AddAdditionalFCWindow : Window
+    internal class AddAdditionalFCWindow(ConfigurationV1 configuration, Plugin plugin)
+        : Window("FC Name Color Config - Adding Additional FC", ImGuiWindowFlags.AlwaysAutoResize)
     {
-        private readonly ConfigurationV1 configuration;
-        private readonly Plugin plugin;
         private readonly Regex fcUrlPattern = new Regex(@"https:\/\/(eu|na|jp).finalfantasyxiv.com\/lodestone\/freecompany\/(\d{19})\/*");
 
         private string? fcUrl;
-
-        public AddAdditionalFCWindow(ConfigurationV1 configuration, Plugin plugin) : base("FC Name Color Config - Adding Additional FC", ImGuiWindowFlags.AlwaysAutoResize)
-        {
-            this.configuration = configuration;
-            this.plugin = plugin;
-        }
 
         public override void OnOpen()
         {
@@ -106,7 +99,7 @@ namespace FCNameColor.UI
                 ImGui.TextColored(ImGuiColors.DalamudRed, "Url doesn’t match the FC url format.");
             }
 
-            if (plugin.SearchingFCError != null && plugin.SearchingFCError.Length > 0)
+            if (plugin.SearchingFCError is { Length: > 0 })
             {
                 ImGui.TextColored(ImGuiColors.DalamudRed, plugin.SearchingFCError);
             }

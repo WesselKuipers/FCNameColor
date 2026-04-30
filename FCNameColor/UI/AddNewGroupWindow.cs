@@ -9,17 +9,10 @@ using System.Numerics;
 
 namespace FCNameColor.UI
 {
-    internal class AddNewGroupWindow : Window
+    internal class AddNewGroupWindow(ConfigurationV1 configuration, Plugin plugin)
+        : Window("FC Name Color Config - Add new group", ImGuiWindowFlags.AlwaysAutoResize)
     {
-        private readonly ConfigurationV1 configuration;
-        private readonly Plugin plugin;
         private string? newGroup;
-
-        public AddNewGroupWindow(ConfigurationV1 configuration, Plugin plugin) : base("FC Name Color Config - Add new group", ImGuiWindowFlags.AlwaysAutoResize)
-        {
-            this.configuration = configuration;
-            this.plugin = plugin;
-        }
 
         public override void OnOpen()
         {
@@ -55,17 +48,15 @@ namespace FCNameColor.UI
                 ImGui.TextColored(ImGuiColors.DalamudRed, "Group names must be unique.");
             }
 
-            if (add)
-            {
-                if (newGroup != null)
-                    configuration.Groups.Add(newGroup, new Group
-                    {
-                        UiColor = "52",
-                        Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1f)
-                    });
-                configuration.Save();
-                IsOpen = false;
-            }
+            if (!add) return;
+            if (newGroup != null)
+                configuration.Groups.Add(newGroup, new Group
+                {
+                    UiColor = "52",
+                    Color = new Vector4(0.07450981f, 0.8f, 0.6392157f, 1f)
+                });
+            configuration.Save();
+            IsOpen = false;
         }
     }
 }

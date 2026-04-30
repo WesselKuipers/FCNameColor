@@ -28,25 +28,25 @@ namespace FCNameColor
 {
     public class Plugin : IDalamudPlugin
     {
+        [PluginService] internal static IDalamudPluginInterface Pi { get; private set; } = null!;
+        [PluginService] internal static ISigScanner SigScanner { get; private set; } = null!;
+        [PluginService] internal static IClientState ClientState { get; private set; } = null!;
+        [PluginService] internal static IChatGui Chat { get; private set; } = null!;
+        [PluginService] internal static ICondition Condition { get; private set; } = null!;
+        [PluginService] internal static IObjectTable Objects { get; private set; } = null!;
+        [PluginService] internal static ICommandManager Commands { get; private set; } = null!;
+        [PluginService] internal static IFramework Framework { get; private set; } = null!;
+        [PluginService] internal static IGameInteropProvider GameInteropProvider { get; private set; } = null!;
+        [PluginService] internal static IPluginLog PluginLog { get; private set; } = null!;
+        [PluginService] internal static INamePlateGui NamePlateGui { get; private set; } = null!;
+        [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null!;
+        [PluginService] internal static ITargetManager TargetManager { get; private set; } = null!;
+        
         public string Name => "FC Name Color";
         private const string CommandName = "/fcnc";
         private readonly ConfigurationV1 config;
 
-        [PluginService] public static IDalamudPluginInterface Pi { get; private set; } = null!;
-        [PluginService] public static ISigScanner SigScanner { get; private set; } = null!;
-        [PluginService] public static IClientState ClientState { get; private set; } = null!;
-        [PluginService] public static IChatGui Chat { get; private set; } = null!;
-        [PluginService] public static ICondition Condition { get; private set; } = null!;
-        [PluginService] public static IObjectTable Objects { get; private set; } = null!;
-        [PluginService] public static ICommandManager Commands { get; private set; } = null!;
-        [PluginService] public static IFramework Framework { get; private set; } = null!;
-        [PluginService] public static IGameInteropProvider GameInteropProvider { get; private set; } = null!;
-        [PluginService] public static IPluginLog PluginLog { get; private set; } = null!;
-        [PluginService] public static INamePlateGui NamePlateGui { get; private set; } = null!;
-        [PluginService] 
-        public static IObjectTable ObjectTable { get; private set; } = null!;
-
-        public readonly WindowSystem WindowSystem = new("FC Name Color");
+        private readonly WindowSystem windowSystem = new("FC Name Color");
         private LodestoneClient? lodestoneClient;
         private readonly FCNameColorProvider fcNameColorProvider;
 
@@ -64,7 +64,7 @@ namespace FCNameColor
         public int Cooldown;
 
         /// <summary>
-        /// Used to indicate whether or not the player is currently in an FC themselves.
+        /// Used to indicate whether the player is currently in an FC themselves.
         /// </summary>
         public bool NotInFC = true;
 
@@ -75,7 +75,7 @@ namespace FCNameColor
         public bool Error;
         public FC? FC;
         public Group FCGroup;
-        public List<FC> TrackedFCs = [];
+        private List<FC> trackedFCs = [];
         public string? PlayerKey;
         public bool SearchingFC;
         public string? SearchingFCError = "";
@@ -110,11 +110,9 @@ namespace FCNameColor
             {
                 foreach (var (fc, group) in character.Value)
                 {
-                    if (!config.Groups.ContainsKey(group))
-                    {
-                        config.FCGroups[character.Key][fc] = "Default";
-                        PluginLog.Info("Set group for FC {fc} to Default because the configured group wasn't found.", fc);
-                    }
+                    if (config.Groups.ContainsKey(group)) continue;
+                    config.FCGroups[character.Key][fc] = "Default";
+                    PluginLog.Info("Set group for FC {fc} to Default because the configured group wasn't found.", fc);
                 }
             }
 
@@ -122,14 +120,15 @@ namespace FCNameColor
             var ignoreListWindow = new IgnoreListWindow(config, this);
             var addAdditionalFCWindow = new AddAdditionalFCWindow(config, this);
             var additionalFCsWindow = new AdditionalFCsWindow(config, this, PluginLog, addAdditionalFCWindow);
+            var hideNameplatesSettingsWindow = new HideNameplatesSettingsWindow(config, this);
 
-            UI = new PluginUI(config, dataManager, this, ClientState, PluginLog, addNewGroupWindow, ignoreListWindow, additionalFCsWindow);
-            WindowSystem.AddWindow(UI);
-            WindowSystem.AddWindow(addNewGroupWindow);
-            WindowSystem.AddWindow(ignoreListWindow);
-            WindowSystem.AddWindow(addAdditionalFCWindow);
-            WindowSystem.AddWindow(additionalFCsWindow);
-
+            UI = new PluginUI(config, this, ClientState, PluginLog, addNewGroupWindow, ignoreListWindow, additionalFCsWindow, hideNameplatesSettingsWindow);
+            windowSystem.AddWindow(UI);
+            windowSystem.AddWindow(addNewGroupWindow);
+            windowSystem.AddWindow(ignoreListWindow);
+            windowSystem.AddWindow(addAdditionalFCWindow);
+            windowSystem.AddWindow(additionalFCsWindow);
+            windowSystem.AddWindow(hideNameplatesSettingsWindow);
 
             Commands.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
@@ -137,6 +136,7 @@ namespace FCNameColor
             });
 
             NamePlateGui.OnNamePlateUpdate += NamePlateGui_OnNamePlateUpdate;
+            NamePlateGui.OnDataUpdate += NamePlateGuiOnOnDataUpdate;
 
             timer.Elapsed += delegate
             {
@@ -149,7 +149,7 @@ namespace FCNameColor
 
             ClientState.Login += OnLogin;
             Framework.Update += OnFrameworkUpdate;
-            Pi.UiBuilder.Draw += WindowSystem.Draw;
+            Pi.UiBuilder.Draw += windowSystem.Draw;
             Pi.UiBuilder.OpenConfigUi += ToggleConfigUI;
             Pi.UiBuilder.OpenMainUi += ToggleConfigUI;
 
@@ -172,12 +172,12 @@ namespace FCNameColor
             loggingIn = true;
             initialized = false;
             FC = null;
-            TrackedFCs = new List<FC>();
+            trackedFCs = [];
         }
 
         private void OnFrameworkUpdate(IFramework framework)
         {
-            if ((ObjectTable[0] as IPlayerCharacter) == null)
+            if (ObjectTable[0] is not IPlayerCharacter)
             {
                 return;
             }
@@ -212,7 +212,10 @@ namespace FCNameColor
             Cooldown = CooldownTime * 6;
             timer.Start();
 
-            void OnFinish(object sender, ElapsedEventArgs e)
+            timer.Elapsed += OnFinish;
+            return;
+
+            void OnFinish(object? sender, ElapsedEventArgs elapsedEventArgs)
             {
                 if (Cooldown > 0) return;
 
@@ -220,8 +223,6 @@ namespace FCNameColor
                 _ = FetchData();
                 timer.Elapsed -= OnFinish;
             }
-
-            timer.Elapsed += OnFinish;
         }
 
         public async Task<bool> SearchFC(string id, string group)
@@ -285,14 +286,14 @@ namespace FCNameColor
                 {
                     config.FCs[fc.ID] = fc;
 
-                    var trackedFCIndex = TrackedFCs.FindIndex(f => fc.ID == f.ID);
+                    var trackedFCIndex = trackedFCs.FindIndex(f => fc.ID == f.ID);
                     if (trackedFCIndex >= 0)
                     {
-                        TrackedFCs[trackedFCIndex] = fc;
+                        trackedFCs[trackedFCIndex] = fc;
                     }
                     else
                     {
-                        TrackedFCs.Add(fc);
+                        trackedFCs.Add(fc);
                     }
                 }
 
@@ -364,7 +365,7 @@ namespace FCNameColor
             PluginLog.Debug($"Fetching data for {PlayerKey}");
             if (PlayerKey != null && !config.FCGroups.ContainsKey(PlayerKey))
             {
-                config.FCGroups.Add(PlayerKey, new());
+                config.FCGroups.Add(PlayerKey, new Dictionary<string, string>());
             }
 
             {
@@ -384,7 +385,7 @@ namespace FCNameColor
                     PluginLog.Debug($"Loaded {trackedFCs.Count} cached FCs");
                 }
 
-                TrackedFCs = trackedFCs;
+                this.trackedFCs = trackedFCs;
             }
 
             if (PlayerKey != null)
@@ -491,7 +492,7 @@ namespace FCNameColor
                     async void ScheduleFCUpdates()
                     {
                         PluginLog.Debug("Scheduling additional FC updates");
-                        foreach (var fcGroup in fcGroups.Where(f => FC.HasValue ? FC.Value.ID != f.Key : true))
+                        foreach (var fcGroup in fcGroups.Where(f => !FC.HasValue || FC.Value.ID != f.Key))
                         {
                             var additionalFCFetched = config.FCs.TryGetValue(fcGroup.Key, out var additionalFC);
                             if (additionalFCFetched && (DateTime.Now - additionalFC.LastUpdated).TotalHours < 1)
@@ -530,11 +531,10 @@ namespace FCNameColor
             left.PushColorRgba(color);
             right.PopColor();
 
-            if (config.Glow)
-            {
-                left.PushEdgeColorRgba(color);
-                right.PopEdgeColor();
-            }
+            if (!config.Glow) return (left.ToReadOnlySeString().ToDalamudString(), right.ToReadOnlySeString().ToDalamudString());
+            
+            left.PushEdgeColorRgba(color);
+            right.PopEdgeColor();
 
             return (left.ToReadOnlySeString().ToDalamudString(), right.ToReadOnlySeString().ToDalamudString());
         }
@@ -582,9 +582,9 @@ namespace FCNameColor
                         var group = NotInFC ? config.Groups.First().Value : config.Groups.GetValueOrDefault(config.FCGroups[PlayerKey][FC?.ID ?? ""], ConfigurationV1.DefaultGroups[0].Value);
                         var color = group.Color;
 
-                        if (NotFound || NotInFC || (FC.HasValue && !FC.Value.Members.Any(member => member.Name == name)))
+                        if (NotFound || NotInFC || (FC.HasValue && FC.Value.Members.All(member => member.Name != name)))
                         {
-                            var additionalFCIndex = TrackedFCs.FindIndex(f => f.World == world && f.Members.Any(m => m.Name == name));
+                            var additionalFCIndex = trackedFCs.FindIndex(f => f.World == world && f.Members.Any(m => m.Name == name));
                             if (additionalFCIndex < 0)
                             {
                                 // This player isn’t an FC member or in one of the tracked FCs.
@@ -594,9 +594,9 @@ namespace FCNameColor
                                 continue;
                             }
 
-                            var id = TrackedFCs[additionalFCIndex].ID;
-                            var groupName = id != null && config.FCGroups[PlayerKey].ContainsKey(id) ? config.FCGroups[PlayerKey][id] : "Default";
-                            if (!config.Groups.TryGetValue(groupName, out Group value))
+                            var id = trackedFCs[additionalFCIndex].ID;
+                            var groupName = id != null && config.FCGroups[PlayerKey].TryGetValue(id, out var value1) ? value1 : "Default";
+                            if (!config.Groups.TryGetValue(groupName, out var value))
                             {
                                 value = ConfigurationV1.DefaultGroups[1].Value;
                                 config.Groups.Add(groupName, value);
@@ -613,16 +613,16 @@ namespace FCNameColor
                         {
                             handler.FreeCompanyTagParts.OuterWrap = wrapper;
                         }
-
+                        
                         if ((isInDuty && config.IncludeDuties) || shouldReplaceName)
                         {
                             handler.NameParts.TextWrap = wrapper;
-
-                            if (handler.DisplayTitle && handler.Title.TextValue.Length > 0)
+                        
+                            if (handler is { DisplayTitle: true, Title.TextValue.Length: > 0 })
                             {
                                 handler.TitleParts.OuterWrap = wrapper;
                             }
-
+                        
                             if (!isInDuty)
                             {
                                 handler.FreeCompanyTagParts.OuterWrap = wrapper;
@@ -638,11 +638,46 @@ namespace FCNameColor
                 {
                     PluginLog.Error("Something went wrong when trying to run the nameplate logic.");
                     PluginLog.Error("Error message: {e}", e.Message);
-                    continue;
                 }
             }
+        }
+        
+        private void NamePlateGuiOnOnDataUpdate(INamePlateUpdateContext context, IReadOnlyList<INamePlateUpdateHandler> handlers)
+        {
+            if (!config.Enabled || ClientState.IsPvPExcludingDen || !config.HideOtherNameplates)
+            {
+                return;
+            }
+            
+            var isInDuty = Condition[ConditionFlag.BoundByDuty56];
+            if (isInDuty && !config.HideInDuties)
+            {
+                return; 
+            }
+            
+            foreach (var handler in handlers)
+            {
+                if (handler is not { NamePlateKind: NamePlateKind.PlayerCharacter }) continue;
+                var playerCharacter = handler.PlayerCharacter;
+                if (playerCharacter == null) continue;
+                
+                var entityId = playerCharacter.EntityId;
 
-
+                if ((ObjectTable[0] as IPlayerCharacter).EntityId == entityId) continue;
+                if (!config.HideOnTarget && TargetManager.Target != null && TargetManager.Target.EntityId == entityId) continue;
+                if (!config.HideOnSoftTarget && TargetManager.SoftTarget != null && TargetManager.SoftTarget.EntityId == entityId) continue;
+                if (!config.HideOnHover && TargetManager.MouseOverTarget != null && TargetManager.MouseOverTarget.EntityId == entityId) continue;
+                if (!config.HideFriends && playerCharacter.StatusFlags.HasFlag(StatusFlags.Friend)) continue;
+                if (!config.HidePartyMembers && playerCharacter.StatusFlags.HasFlag(StatusFlags.PartyMember)) continue;
+                if (!config.HideAllianceMembers && playerCharacter.StatusFlags.HasFlag(StatusFlags.AllianceMember)) continue;
+                
+                if (!skipCache.Contains(entityId)) continue;
+#if DEBUG
+                PluginLog.Verbose("Hiding {name}", playerCharacter.Name.TextValue);
+#endif
+                handler.VisibilityFlags = 0;
+                handler.MarkerIconId = 0;
+            }
         }
 
         protected virtual void Dispose(bool disposing)
@@ -650,7 +685,7 @@ namespace FCNameColor
             try
             {
                 if (!disposing) return;
-                WindowSystem.RemoveAllWindows();
+                windowSystem.RemoveAllWindows();
 
                 fcNameColorProvider.Dispose();
 
