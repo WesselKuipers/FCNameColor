@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Numerics;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
@@ -7,11 +8,9 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
-using Dalamud.Bindings.ImGui;
 using FCNameColor.Config;
-using FCNameColor.UI;
 
-namespace FCNameColor
+namespace FCNameColor.UI
 {
     internal class PluginUI : Window
     {
@@ -76,18 +75,18 @@ namespace FCNameColor
             {
                 ImGui.SameLine();
                 using (ImRaii.PushColor(ImGuiCol.TextDisabled, ImGuiColors.DalamudOrange))
-                ImGuiComponents.HelpMarker("Could not find player character on Lodestone.\nIf your character is new, please wait a couple of hours for it to show up on Lodestone.\nIf your character is set to private, then the automatic FC fetching won’t work.", FontAwesomeIcon.ExclamationTriangle);
+                    ImGuiComponents.HelpMarker("Could not find player character on Lodestone.\nIf your character is new, please wait a couple of hours for it to show up on Lodestone.\nIf your character is set to private, then the automatic FC fetching won’t work.", FontAwesomeIcon.ExclamationTriangle);
             }
             else if (plugin.NotInFC)
             {
                 ImGui.SameLine();
                 ImGui.TextColored(ImGuiColors.DalamudRed, "Character not in FC");
             }
-            else if (plugin.Loading && !plugin.Error)
-{
-    ImGui.SameLine();
-    ImGui.Text(" Fetching FC members from Lodestone...");
-}
+            else if (plugin is { Loading: true, Error: false })
+            {
+                ImGui.SameLine();
+                ImGui.Text(" Fetching FC members from Lodestone...");
+            }
             else if (plugin.Error)
             {
                 ImGui.SameLine();
@@ -210,33 +209,32 @@ namespace FCNameColor
                             configuration.Save();
                         }
 
-                        if (groupName != "Default" && groupName != "Other FC")
+                        if (groupName is "Default" or "Other FC") continue;
+                        
+                        ImGui.SameLine();
+                        using var id = ImRaii.PushId(groupName);
+                        if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, 1f), new Vector4(1f, 0, 0, 1f), new Vector4(0.9f, 0, 0, 1f)))
                         {
-                            ImGui.SameLine();
-                            using var id = ImRaii.PushId(groupName);
-                            if (ImGuiComponents.IconButton(FontAwesomeIcon.Trash, new Vector4(0.8f, 0, 0, 1f), new Vector4(1f, 0, 0, 1f), new Vector4(0.9f, 0, 0, 1f)))
-                            {
-                                pluginLog.Debug($"Deleting group {groupName}");
-                                configuration.Groups.Remove(groupName);
+                            pluginLog.Debug($"Deleting group {groupName}");
+                            configuration.Groups.Remove(groupName);
 
-                                foreach (var playerConfigs in configuration.FCGroups)
+                            foreach (var playerConfigs in configuration.FCGroups)
+                            {
+                                foreach (var fcGroup in playerConfigs.Value)
                                 {
-                                    foreach (var fcGroup in playerConfigs.Value)
+                                    if (fcGroup.Value == groupName)
                                     {
-                                        if (fcGroup.Value == groupName)
-                                        {
-                                            configuration.FCGroups[playerConfigs.Key][fcGroup.Key] = "Other FC";
-                                        }
+                                        configuration.FCGroups[playerConfigs.Key][fcGroup.Key] = "Other FC";
                                     }
                                 }
-
-                                configuration.Save();
                             }
 
-                            if (ImGui.IsItemHovered())
-                            {
-                                ImGui.SetTooltip($"Delete group {groupName}.\nThe groups Default and Other FC cannot be removed.");
-                            }
+                            configuration.Save();
+                        }
+
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.SetTooltip($"Delete group {groupName}.\nThe groups Default and Other FC cannot be removed.");
                         }
                     }
                 }
@@ -274,8 +272,8 @@ namespace FCNameColor
             {
                 if (ImGui.Button("Clear & Retry"))
                 {
-                    configuration.PlayerFCIDs = new();
-                    configuration.PlayerIDs = new();
+                    configuration.PlayerFCIDs = new Dictionary<string, string?>();
+                    configuration.PlayerIDs = new Dictionary<string, string>();
                     configuration.Save();
                     showAdditionalFCsWindow.IsOpen = false;
                     plugin.SearchingFC = false;
@@ -287,15 +285,17 @@ namespace FCNameColor
             if (ImGui.IsItemHovered())
             {
                 ImGui.SetTooltip(
-                    $@"Pressing this will clear the list of FC members and attempt to fetch all the necessary data from Lodestone.
-This can be especially useful if something went wrong when loading from Lodestone, or if you’ve joined a different FC.
+                    $"""
+                     Pressing this will clear the list of FC members and attempt to fetch all the necessary data from Lodestone.
+                     This can be especially useful if something went wrong when loading from Lodestone, or if you’ve joined a different FC.
 
-If something goes wrong trying to fetch the data, you can try again after {(plugin.Cooldown > 0 ? plugin.Cooldown : Plugin.CooldownTime)} seconds.");
+                     If something goes wrong trying to fetch the data, you can try again after {(plugin.Cooldown > 0 ? plugin.Cooldown : Plugin.CooldownTime)} seconds.
+                     """);
             }
 
             if (!configuration.FCGroups.ContainsKey(plugin.PlayerKey))
             {
-                configuration.FCGroups.Add(plugin.PlayerKey, new());
+                configuration.FCGroups.Add(plugin.PlayerKey, new Dictionary<string, string>());
             }
         }
     }
