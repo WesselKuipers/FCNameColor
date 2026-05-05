@@ -50,14 +50,12 @@ namespace FCNameColor.UI
             ImGui.SameLine();
             if (ImGui.SmallButton("Add Player"))
             {
-                if (configuration.IgnoredPlayers.ContainsKey(currentIgnoredPlayer.Name))
+                if (!configuration.IgnoredPlayers.TryAdd(currentIgnoredPlayer.Name, currentIgnoredPlayer.ID))
                 {
                     ImGui.OpenPopup("###AddPlayerToIgnoreListDupe");
                 }
                 else
                 {
-                    configuration.IgnoredPlayers.Add(currentIgnoredPlayer.Name,
-                        currentIgnoredPlayer.ID);
                     configuration.Save();
                 }
             }

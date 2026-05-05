@@ -84,6 +84,20 @@ namespace FCNameColor.Config
         /// Every FC currently tracked by the plugin.
         /// </summary>
         public Dictionary<string, FC> FCs { get; set; } = new();
+
+        /// <summary>
+        /// Whether other nameplates should be hidden
+        /// </summary>
+        public bool HideOtherNameplates { get; set; }
+
+        public bool HideOnHover { get; set; } = true;
+        public bool HideOnTarget { get; set; }
+        public bool HideOnSoftTarget { get; set; } = true;
+        public bool HidePartyMembers { get; set; }
+        public bool HideAllianceMembers { get; set; } = true;
+        public bool HideFriends { get; set; }
+        public bool HideInDuties { get; set; }
+
         #endregion
 
         [NonSerialized] private IDalamudPluginInterface? pluginInterface;
