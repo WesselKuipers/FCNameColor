@@ -23,6 +23,10 @@ using Dalamud.Game.Gui.NamePlate;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Utility;
 using FCNameColor.API;
+using FCNameColor.Model;
+using NetStone.Model;
+using NetStone.Model.Parseables.CWLS;
+using NetStone.Model.Parseables.Linkshell;
 
 namespace FCNameColor
 {
@@ -73,12 +77,15 @@ namespace FCNameColor
         public FC? FC;
         public Group FCGroup;
         private List<FC> trackedFCs = [];
+        private List<Linkshell> trackedLinkshells = [];
         public string? PlayerKey;
         public bool SearchingFC;
+        public bool SearchingLinkshell;
         public string? SearchingFCError = "";
+        public string? SearchingLinkshellError = "";
         public bool ConfigOpen => UI.IsOpen;
 
-        public Plugin(IDataManager dataManager)
+        public Plugin()
         {
             Config = new ConfigurationMigrator().GetConfig(Pi, PluginLog, Chat);
 
@@ -191,6 +198,9 @@ namespace FCNameColor
             _ = FetchData();
             SearchingFC = false;
             SearchingFCError = null;
+            SearchingLinkshell = false;
+            SearchingLinkshellError = null;
+
         }
 
         private void HandleError(Exception e)
@@ -212,6 +222,172 @@ namespace FCNameColor
                 _ = FetchData();
                 timer.Elapsed -= OnFinish;
             }
+        }
+
+        public async Task<bool> SearchLinkshell(string id, string group)
+        {
+            SearchingLinkshell = true;
+            lodestoneClient ??= await LodestoneClient.GetClientAsync();
+
+            try
+            {
+
+                var ls = await lodestoneClient.GetLinkshell(id);
+                PluginLog.Debug($"Fetched LS {id}: {ls?.Name ?? "(Not found)"}");
+                if (ls?.Name == null)
+                {
+                    SearchingLinkshellError = "LS could not be found, please make sure it exists.";
+                    SearchingLinkshell = false;
+                    return false;
+                }
+
+                if (PlayerKey != null && !Config.LinkshellGroups.ContainsKey(PlayerKey))
+                {
+                    var linkshell = new Linkshell
+                    {
+                        Name = ls.Name,
+                        isCrossworld = false,
+                        Members = []
+                    };
+                    Config.Linkshells.Add(PlayerKey, linkshell);
+                }
+
+                if (PlayerKey != null) Config.LinkshellGroups[PlayerKey][id] = group;
+
+                Config.Save();
+                SearchingLinkshell = false;
+                SearchingLinkshellError = null;
+
+                // We don’t immediately need the list of members, we can fetch this in the background.
+                // All we need to know for this method to work is whether the Linkshell exists or not.
+                _ = UpdateLinkshellMembers(id);
+            }
+            catch
+            {
+                SearchingLinkshell = false;
+                SearchingLinkshellError = "Something went wrong when fetching the Linkshell. Is Lodestone down?";
+                return false;
+            }
+
+            return true;
+        }
+        
+        private async Task UpdateLinkshellMembers(string id)
+        {
+            try
+            {
+                var isCrossworld = id.Length == 40;
+                var lsExists = Config.Linkshells.TryGetValue(id, out var ls);
+                if (!lsExists)
+                {
+                    if (isCrossworld)
+                    {
+                        var fetchedCWLS = await lodestoneClient?.GetCrossworldLinkshell(id);
+                        ls = new Linkshell
+                        {
+                            ID = id,
+                            Name = fetchedCWLS?.Name,
+                            LastUpdated = DateTime.Now,
+                            isCrossworld = isCrossworld,
+                        };
+                    }
+                    else
+                    {
+                        var fetchedLS = await lodestoneClient?.GetCrossworldLinkshell(id);
+                        ls = new Linkshell
+                        {
+                            ID = id,
+                            Name = fetchedLS?.Name,
+                            LastUpdated = DateTime.Now,
+                            isCrossworld = isCrossworld,
+                        };
+                    }
+                }
+                
+                var m = await FetchLinkshellMembers(id);
+                ls.Members = m;
+                if (ls.ID != null && ls.Name != null)
+                {
+                    Config.Linkshells[ls.ID] = ls;
+
+                    var trackedLinkshellIndex = trackedLinkshells.FindIndex(f => ls.ID == f.ID);
+                    if (trackedLinkshellIndex >= 0)
+                    {
+                        trackedLinkshells[trackedLinkshellIndex] = ls;
+                    }
+                    else
+                    {
+                        trackedLinkshells.Add(ls);
+                    }
+                    
+                    ls.LastUpdated = DateTime.Now;
+                    
+                    Config.Save();
+                    PluginLog.Debug("Finished fetching Linkshell members for {fc}. Fetched {members} members.", ls.Name, m.Length);
+                }
+            }
+            catch
+            {
+                PluginLog.Error("Something went wrong when trying to fetch and update the LS members for LS ID {id}.", id);
+            }
+
+            skipCache.Clear();
+        }
+        
+        private async Task<string[]> FetchLinkshellMembers(string id)
+        {
+            // Fetch the first page of Linkshell members.
+            // This will also contain the amount of additional pages of members that may have to be retrieved.
+            PluginLog.Debug($"Fetching LS {id} members page 1");
+            var isCrossworld = id.Length == 40;
+            var newMembers = new List<string>();
+            
+            if (isCrossworld)
+            {
+                var crossworldLinkshellResults = await lodestoneClient?.GetCrossworldLinkshell(id)!;
+                if (crossworldLinkshellResults == null)
+                {
+                    return [];
+                } 
+                newMembers.AddRange(crossworldLinkshellResults.Members.Select(res => $"{res.Name}@{res.Server}"));
+                if (crossworldLinkshellResults.NumPages <= 1) return newMembers.ToArray();
+                
+                var taskList = new List<Task<LodestoneCrossworldLinkshell>>();
+                // Fire off async requests for fetching members for each remaining page
+                foreach (var index in Enumerable.Range(2, crossworldLinkshellResults.NumPages - 1))
+                {
+                    PluginLog.Debug($"Fetching CWLS {id} members page {index}");
+                    taskList.Add(lodestoneClient.GetCrossworldLinkshell(id, index)!);
+                    await Task.WhenAll(taskList);
+                    taskList.ForEach(task =>
+                        newMembers.AddRange(
+                            task.Result.Members.Select(res => $"{res.Name}@{res.Server}")));
+                }
+            }
+            else
+            {
+                var linkshellResults = await lodestoneClient?.GetLinkshell(id)!;
+                if (linkshellResults == null)
+                {
+                    return [];
+                } 
+                newMembers.AddRange(linkshellResults.Members.Select(res => $"{res.Name}@{res.Server}"));
+                if (linkshellResults.NumPages <= 1) return newMembers.ToArray();
+                
+                var taskList = new List<Task<LodestoneLinkshell>>();
+                // Fire off async requests for fetching members for each remaining page
+                foreach (var index in Enumerable.Range(2, linkshellResults.NumPages - 1))
+                {
+                    PluginLog.Debug($"Fetching LS {id} members page {index}");
+                    taskList.Add(lodestoneClient.GetLinkshell(id, index)!);
+                    await Task.WhenAll(taskList);
+                    taskList.ForEach(task =>
+                        newMembers.AddRange(
+                            task.Result.Members.Select(res => $"{res.Name}@{res.Server}")));
+                }
+            }
+            
+            return newMembers.ToArray();
         }
 
         public async Task<bool> SearchFC(string id, string group)
@@ -285,6 +461,8 @@ namespace FCNameColor
                         trackedFCs.Add(fc);
                     }
                 }
+                
+                fc.LastUpdated = DateTime.Now;
 
                 Config.Save();
                 PluginLog.Debug("Finished fetching FC members for {fc}. Fetched {members} members.", fc.Name, m.Count);
@@ -358,23 +536,23 @@ namespace FCNameColor
             }
 
             {
-                var trackedFCs = new List<FC>();
+                var newTrackedFCs = new List<FC>();
                 if (PlayerKey != null)
                     foreach (var fcConfig in Config.FCGroups[PlayerKey])
                     {
                         var foundTrackedFc = Config.FCs.TryGetValue(fcConfig.Key, out var trackedFC);
                         if (foundTrackedFc)
                         {
-                            trackedFCs.Add(trackedFC);
+                            newTrackedFCs.Add(trackedFC);
                         }
                     }
 
-                if (trackedFCs.Count > 0)
+                if (newTrackedFCs.Count > 0)
                 {
-                    PluginLog.Debug($"Loaded {trackedFCs.Count} cached FCs");
+                    PluginLog.Debug($"Loaded {newTrackedFCs.Count} cached FCs");
                 }
 
-                this.trackedFCs = trackedFCs;
+                trackedFCs = newTrackedFCs;
             }
 
             if (PlayerKey != null)
@@ -508,6 +686,39 @@ namespace FCNameColor
                             PluginLog.Error(e, "Something went wrong when updating the FCs");
                         }
                     }
+                    
+                    var lsIDs = Config.LinkshellGroups[PlayerKey].Select(g => g.Key).ToArray();
+                    async void ScheduleLinkshellUpdates()
+                    {
+                        try
+                        {
+                            PluginLog.Debug("Scheduling Linkshell updates");
+
+                            foreach (var lsID in lsIDs)
+                            {
+                                var lsFetched = Config.Linkshells.TryGetValue(lsID, out var ls);
+                                if (lsFetched && (DateTime.Now - ls.LastUpdated).TotalHours < 11)
+                                {
+                                    PluginLog.Debug(
+                                        $"Skipping updating {ls.Name}, it was updated less than 12 hours ago.");
+                                    continue;
+                                }
+
+                                PluginLog.Debug($"Waiting 30 seconds before updating LS {ls}");
+                                await Task.Delay(30000);
+
+                                PluginLog.Debug($"Updating FC {ls}");
+                                await UpdateLinkshellMembers(ls.ID);
+                                skipCache.Clear();
+                            }
+
+                            PluginLog.Debug("Finished loading all LS data.");
+                        }
+                        catch (Exception e)
+                        {
+                            PluginLog.Error(e, "Something went wrong when updating the Linkshells");
+                        }
+                    }
 
                     skipCache.Clear();
                     new Task(ScheduleFCUpdates).Start();
@@ -565,9 +776,7 @@ namespace FCNameColor
                     if (!isInDuty && isLocalPlayer && !Config.IncludeSelf) { continue; }
                     // Skip any player who is dead, colouring the name of dead characters makes them harder to recognize.
                     if (playerCharacter.CurrentHp == 0) { continue; }
-
-                    var isInParty = playerCharacter.StatusFlags.HasFlag(StatusFlags.PartyMember);
-                    var isInAlliance = playerCharacter.StatusFlags.HasFlag(StatusFlags.AllianceMember);
+                    
                     var isFriend = playerCharacter.StatusFlags.HasFlag(StatusFlags.Friend);
 
                     if (Config.IgnoreFriends && isFriend) { continue; }

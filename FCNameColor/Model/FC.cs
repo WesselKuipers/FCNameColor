@@ -9,7 +9,7 @@ namespace FCNameColor
     public struct FC
     {
         /// <summary>
-        /// The Lodestone ID if the FC
+        /// The Lodestone ID of the FC
         /// </summary>
         public string? ID;
         

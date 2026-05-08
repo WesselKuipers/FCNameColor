@@ -126,6 +126,7 @@ public class TabFCs(Plugin plugin) : ConfigTab(plugin)
         }
 
         if (Plugin.PlayerKey == null) return;
+        
         foreach (var fcConfigEntry in Config.FCGroups[Plugin.PlayerKey])
         {
             var id = fcConfigEntry.Key;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Configuration;
 using Dalamud.Plugin;
+using FCNameColor.Model;
 
 namespace FCNameColor.Config
 {
@@ -81,9 +82,17 @@ namespace FCNameColor.Config
         public Dictionary<string, Dictionary<string, string>> FCGroups { get; set; } = new();
 
         /// <summary>
+        /// A list of Linkshell groups to set to a specific Linkshell, mapped by player name.
+        /// [Player@World][LinkshellId] => Group name
+        /// </summary>
+        public Dictionary<string, Dictionary<string, string>> LinkshellGroups { get; set; } = new();
+
+        /// <summary>
         /// Every FC currently tracked by the plugin.
         /// </summary>
         public Dictionary<string, FC> FCs { get; set; } = new();
+        
+        public Dictionary<string, Linkshell> Linkshells { get; set; } = new();
 
         /// <summary>
         /// Whether other nameplates should be hidden
