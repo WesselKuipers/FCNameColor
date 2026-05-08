@@ -5,13 +5,13 @@ namespace FCNameColor.Utils
 {
         internal static class ImGuiUtils
         {
-            public static void AddCheckbox(string label, string tooltip, bool currentValue, Action<bool> setter, ref bool isDirty)
+            public static void AddCheckbox(string label, string tooltip, bool currentValue, Action<bool> setter, Func<bool> markDirty)
             {
                 var value = currentValue;
                 if (ImGui.Checkbox(label, ref value))
                 {
                     setter(value);
-                    isDirty = true;
+                    markDirty();
                 }
 
                 if (tooltip.Length == 0) return;
