@@ -116,9 +116,7 @@ namespace FCNameColor
 
             UI = new ConfigUI( this);
             windowSystem.AddWindow(UI);
-
-            UI.IsOpen = true;
-
+            
             Commands.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
                 HelpMessage = "Opens the FCNameColor Config."
