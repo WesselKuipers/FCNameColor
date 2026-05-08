@@ -3,16 +3,10 @@ using FCNameColor.Config;
 
 namespace FCNameColor.UI.Tabs;
 
-public abstract class ConfigTab
+public abstract class ConfigTab(Plugin plugin)
 {
-    protected readonly Plugin Plugin;
-    protected readonly ConfigurationV1 Config;
+    protected readonly Plugin Plugin = plugin;
+    protected readonly ConfigurationV1 Config = plugin.Config;
 
-    protected ConfigTab(Plugin plugin)
-    {
-        Plugin = plugin;
-        Config = plugin.Config;
-    }
-    
     public abstract void Draw(Func<bool> markDirty);
 }

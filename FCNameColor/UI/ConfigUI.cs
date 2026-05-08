@@ -24,7 +24,7 @@ public class ConfigUI : Window
 
     private bool dirty;
 
-    private List<ConfigTab> tabs = [];
+    private readonly List<ConfigTab> tabs = [];
 
     public ConfigUI(Plugin plugin) : base("FC Name Color Config###TabsConfig")
     {
@@ -38,7 +38,7 @@ public class ConfigUI : Window
         tabs.Add(new TabGeneral(plugin));
         tabs.Add(new TabGroups(plugin));
         tabs.Add(new TabFCs(plugin));
-        tabs.Add(new TabLinkshells(plugin));
+        // tabs.Add(new TabLinkshells(plugin));
         tabs.Add(new TabIgnored(plugin));
     }
 

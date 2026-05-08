@@ -273,6 +273,7 @@ namespace FCNameColor
                 fc.Members = m.ToArray();
                 if (fc.ID != null)
                 {
+                    fc.LastUpdated = DateTime.Now;
                     Config.FCs[fc.ID] = fc;
 
                     var trackedFCIndex = trackedFCs.FindIndex(f => fc.ID == f.ID);
@@ -285,7 +286,7 @@ namespace FCNameColor
                         trackedFCs.Add(fc);
                     }
                 }
-
+                
                 Config.Save();
                 PluginLog.Debug("Finished fetching FC members for {fc}. Fetched {members} members.", fc.Name, m.Count);
             }
@@ -358,23 +359,23 @@ namespace FCNameColor
             }
 
             {
-                var trackedFCs = new List<FC>();
+                var updatedTrackedFCs = new List<FC>();
                 if (PlayerKey != null)
                     foreach (var fcConfig in Config.FCGroups[PlayerKey])
                     {
                         var foundTrackedFc = Config.FCs.TryGetValue(fcConfig.Key, out var trackedFC);
                         if (foundTrackedFc)
                         {
-                            trackedFCs.Add(trackedFC);
+                            updatedTrackedFCs.Add(trackedFC);
                         }
                     }
 
-                if (trackedFCs.Count > 0)
+                if (updatedTrackedFCs.Count > 0)
                 {
-                    PluginLog.Debug($"Loaded {trackedFCs.Count} cached FCs");
+                    PluginLog.Debug($"Loaded {updatedTrackedFCs.Count} cached FCs");
                 }
 
-                this.trackedFCs = trackedFCs;
+                trackedFCs = updatedTrackedFCs;
             }
 
             if (PlayerKey != null)
@@ -565,9 +566,7 @@ namespace FCNameColor
                     if (!isInDuty && isLocalPlayer && !Config.IncludeSelf) { continue; }
                     // Skip any player who is dead, colouring the name of dead characters makes them harder to recognize.
                     if (playerCharacter.CurrentHp == 0) { continue; }
-
-                    var isInParty = playerCharacter.StatusFlags.HasFlag(StatusFlags.PartyMember);
-                    var isInAlliance = playerCharacter.StatusFlags.HasFlag(StatusFlags.AllianceMember);
+                    
                     var isFriend = playerCharacter.StatusFlags.HasFlag(StatusFlags.Friend);
 
                     if (Config.IgnoreFriends && isFriend) { continue; }
