@@ -100,25 +100,28 @@ public class TabGeneral(Plugin plugin) : ConfigTab(plugin)
                 "This will only colour the FC tag instead of the entire name.",
                 Config.OnlyColorFCTag, value => Config.OnlyColorFCTag = value, markDirty);
 
-            using (ImRaii.Table("###OptionsTable", 2, ImGuiTableFlags.SizingFixedFit))
+            using (var table = ImRaii.Table("###OptionsTable", 2, ImGuiTableFlags.SizingFixedFit))
             {
-                ImGui.TableNextColumn();
-                ImGuiUtils.AddCheckbox("Include self", "This will colour your own FC tag.", Config.IncludeSelf,
-                    value => Config.IncludeSelf = value, markDirty);
-                ImGui.TableNextColumn();
-                ImGuiUtils.AddCheckbox("Ignore friends", "Don't change the nameplates of friends.",
-                    Config.IgnoreFriends,
-                    value => Config.IgnoreFriends = value, markDirty);
+                if (table)
+                {
+                    ImGui.TableNextColumn();
+                    ImGuiUtils.AddCheckbox("Include self", "This will colour your own FC tag.", Config.IncludeSelf,
+                        value => Config.IncludeSelf = value, markDirty);
+                    ImGui.TableNextColumn();
+                    ImGuiUtils.AddCheckbox("Ignore friends", "Don't change the nameplates of friends.",
+                        Config.IgnoreFriends,
+                        value => Config.IgnoreFriends = value, markDirty);
 
-                ImGui.TableNextColumn();
-                ImGuiUtils.AddCheckbox("Include duties",
-                    "Will colour the entire names of FC members when inside a duty",
-                    Config.IncludeDuties, value => Config.IncludeDuties = value, markDirty);
-                ImGui.TableNextColumn();
-                ImGuiUtils.AddCheckbox("Only duties",
-                    "Disable the plugin outside of duties. This helps with conflicts with other plugins.",
-                    Config.OnlyDuties,
-                    value => Config.OnlyDuties = value, markDirty);
+                    ImGui.TableNextColumn();
+                    ImGuiUtils.AddCheckbox("Include duties",
+                        "Will colour the entire names of FC members when inside a duty",
+                        Config.IncludeDuties, value => Config.IncludeDuties = value, markDirty);
+                    ImGui.TableNextColumn();
+                    ImGuiUtils.AddCheckbox("Only duties",
+                        "Disable the plugin outside of duties. This helps with conflicts with other plugins.",
+                        Config.OnlyDuties,
+                        value => Config.OnlyDuties = value, markDirty);
+                }
             }
 
             ImGuiUtils.AddCheckbox("Enable glow", "Makes outline of the nameplates thicker.", Config.Glow,

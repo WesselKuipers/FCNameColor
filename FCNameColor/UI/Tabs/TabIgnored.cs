@@ -15,12 +15,12 @@ public class TabIgnored(Plugin plugin) : ConfigTab(plugin)
 {
     private string ignoredPlayerFilter = "";
     private readonly List<FCMember> selectedPlayers = [];
-    
+
     public override void Draw(Func<bool> markDirty)
     {
         using var tab = ImRaii.TabItem("Ignored###TabIgnored");
         if (!tab) return;
-        
+
         ImGui.TextWrapped("Don't update nameplates for these players.");
         ImGui.Spacing();
 
@@ -32,30 +32,39 @@ public class TabIgnored(Plugin plugin) : ConfigTab(plugin)
                        ImGui.GetContentRegionAvail().Y - 26f * ImGuiHelpers.GlobalScale)))
         {
             if (!tabChild) return;
-            using (ImRaii.Child("###IgnoredPlayers",
-                       new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y/2 - ImGui.GetStyle().ItemSpacing.Y / 2)))
+            using (var child = ImRaii.Child("###IgnoredPlayers",
+                       new Vector2(ImGui.GetContentRegionAvail().X,
+                           ImGui.GetContentRegionAvail().Y / 2 - ImGui.GetStyle().ItemSpacing.Y / 2)))
             {
-                if (ignoredPlayers.Count == 0)
+                if (child)
                 {
-                    ImGui.Text("You're a friendly person, you don't have anyone ignored.");
-                }
-
-                foreach (var (key, _) in Config.IgnoredPlayers.ToList())
-                {
-                    ImGui.Spacing();
-                    ImGui.BeginGroup();
-                    ImGui.PushFont(UiBuilder.IconFont);
-                    ImGui.Text(FontAwesomeIcon.Times.ToIconString());
-                    ImGui.PopFont();
-                    ImGui.EndGroup();
-                    if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+                    if (ignoredPlayers.Count == 0)
                     {
-                        Config.IgnoredPlayers.Remove(key);
-                        markDirty();
+                        ImGui.Text("You're a friendly person, you don't have anyone ignored.");
                     }
 
-                    ImGui.SameLine();
-                    ImGui.Text(key);
+                    foreach (var (key, _) in Config.IgnoredPlayers.ToList())
+                    {
+                        ImGui.Spacing();
+                        using (var group = ImRaii.Group())
+                        {
+                            if (group.Alive)
+                            {
+                                ImGui.PushFont(UiBuilder.IconFont);
+                                ImGui.Text(FontAwesomeIcon.Times.ToIconString());
+                                ImGui.PopFont();
+                            }
+                        }
+
+                        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+                        {
+                            Config.IgnoredPlayers.Remove(key);
+                            markDirty();
+                        }
+
+                        ImGui.SameLine();
+                        ImGui.Text(key);
+                    }
                 }
             }
 
@@ -66,22 +75,26 @@ public class TabIgnored(Plugin plugin) : ConfigTab(plugin)
             ImGui.Text("Search by player name");
             ImGui.InputTextWithHint("###NewIgnoredPlayer", "Player name", ref ignoredPlayerFilter, 50);
             ImGui.Spacing();
-            using (ImRaii.Child("###FilteredPlayers",
-                       new Vector2(ImGui.GetContentRegionAvail().X, ImGui.GetContentRegionAvail().Y - ImGui.GetStyle().ItemSpacing.Y / 2)))
+            using (var child = ImRaii.Child("###FilteredPlayers",
+                       new Vector2(ImGui.GetContentRegionAvail().X,
+                           ImGui.GetContentRegionAvail().Y - ImGui.GetStyle().ItemSpacing.Y / 2)))
             {
-                foreach (var member in fcMembers.Where(m =>
-                             m.Name.Contains(ignoredPlayerFilter, StringComparison.OrdinalIgnoreCase)))
+                if (child)
                 {
-                    var selected = selectedPlayers.Contains(member);
-                    if (ImGui.Selectable(member.Name, selected))
+                    foreach (var member in fcMembers.Where(m =>
+                                 m.Name.Contains(ignoredPlayerFilter, StringComparison.OrdinalIgnoreCase)))
                     {
-                        if (selected)
+                        var selected = selectedPlayers.Contains(member);
+                        if (ImGui.Selectable(member.Name, selected))
                         {
-                            selectedPlayers.Remove(member);
-                        }
-                        else
-                        {
-                            selectedPlayers.Add(member);
+                            if (selected)
+                            {
+                                selectedPlayers.Remove(member);
+                            }
+                            else
+                            {
+                                selectedPlayers.Add(member);
+                            }
                         }
                     }
                 }
@@ -89,26 +102,38 @@ public class TabIgnored(Plugin plugin) : ConfigTab(plugin)
         }
 
 
-        if (ImGui.Button("Ignore Players"))
+        if (selectedPlayers.Count == 0)
+        {
+            ImGuiComponents.DisabledButton("Ignore Players");
+        }
+        else if (ImGui.Button("Ignore Players"))
         {
             foreach (var player in selectedPlayers)
             {
                 Config.IgnoredPlayers.TryAdd(player.Name, player.ID);
-                ignoredPlayers.Clear();
             }
+
+            selectedPlayers.Clear();
         }
+
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip("Add selected players to the ignore list.\nDoes nothing if the player is already ignored.");
+            ImGui.SetTooltip(
+                "Add selected players to the ignore list.\nDoes nothing if the player is already ignored.");
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Unignore Players"))
+        if (selectedPlayers.Count == 0)
+        {
+            ImGuiComponents.DisabledButton("Unignore Players");
+        }
+        else if (ImGui.Button("Unignore Players"))
         {
             Config.IgnoredPlayers =
                 Config.IgnoredPlayers.Where(p => !selectedPlayers.Select(s => s.Name).Contains(p.Key)).ToDictionary();
-            ignoredPlayers.Clear();
+            selectedPlayers.Clear();
         }
+
         if (ImGui.IsItemHovered())
         {
             ImGui.SetTooltip("Remove selected players from the ignore list.");
@@ -125,10 +150,11 @@ public class TabIgnored(Plugin plugin) : ConfigTab(plugin)
                     Config.IgnoredPlayers.TryAdd(player[0].Name, player[0].ID);
                 }
             }
-            
+
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip($"Add {Plugin.TargetManager.Target.Name.TextValue} to the ignore list.\nThis will do nothing if the player isn't included in any tracked FCs or Linkshells.");
+                ImGui.SetTooltip(
+                    $"Add {Plugin.TargetManager.Target.Name.TextValue} to the ignore list.\nThis will do nothing if the player isn't included in any tracked FCs or Linkshells.");
             }
         }
         else

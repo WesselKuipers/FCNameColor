@@ -19,6 +19,7 @@ public class TabGroups(Plugin plugin) : ConfigTab(plugin)
         if (!tab) return;
 
         using var child = ImRaii.Child("TabChild", ImGui.GetContentRegionAvail());
+        if (!child) return;
         
         ImGui.Text(
             "Groups determine which colour is used for the nameplate.\nMultiple FCs or Linkshells can be assigned to the same group.");

@@ -7,6 +7,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 
 namespace FCNameColor.UI.Tabs;
@@ -24,6 +25,7 @@ public class TabFCs(Plugin plugin) : ConfigTab(plugin)
         if (!tab) return;
 
         using var child = ImRaii.Child("TabChild", ImGui.GetContentRegionAvail());
+        if (!child) return;
         
         ImGui.TextWrapped("Track FCs that aren't your own.");
         ImGui.Spacing();
@@ -101,16 +103,21 @@ public class TabFCs(Plugin plugin) : ConfigTab(plugin)
             ImGui.TextColored(ImGuiColors.DalamudRed, Plugin.SearchingFCError);
         }
 
-        if (ImGui.BeginPopup("###SameFC"))
+        
+        using (var sameFcPopup = ImRaii.Popup("###SameFC"))
         {
-            ImGui.Text("This is your own FC, it’s already being tracked.");
-            ImGui.EndPopup();
+            if (sameFcPopup)
+            {
+                ImGui.Text("This is your own FC, it's already being tracked.");
+            }
         }
-
-        if (ImGui.BeginPopup("###AddFCDupe"))
+        
+        using (var fcDupePopup = ImRaii.Popup("###AddFCDupe"))
         {
-            ImGui.Text("You’ve already added this FC!");
-            ImGui.EndPopup();
+            if (fcDupePopup)
+            {
+                ImGui.Text("You've already added this FC!");
+            }
         }
 
         ImGui.Spacing();
@@ -144,11 +151,27 @@ public class TabFCs(Plugin plugin) : ConfigTab(plugin)
             ImGui.ColorButton("", Config.Groups[groupName].Color);
             ImGui.SameLine();
             var groups = Config.Groups.Keys.ToArray();
-            var groupIndex = Array.IndexOf(groups, groupName);
-            if (ImGui.Combo("###AdditionalFCGroup", ref groupIndex, groups, groups.Length))
+            using (var additionalFCGroup = ImRaii.Combo("###AdditionalFCGroup", groupName))
             {
-                if (fc.ID != null) Config.FCGroups[Plugin.PlayerKey][fc.ID] = groups[groupIndex];
-                markDirty();
+                if (additionalFCGroup)
+                {
+                    foreach (var group in groups)
+                    {
+                        var color = Config.Groups[group].Color;
+                        var cursorPosition = ImGui.GetCursorPos();
+                        
+                        if (ImGui.Selectable($"##{group}", group == groupName, ImGuiSelectableFlags.None, new Vector2(ImGui.GetContentRegionAvail().X, 22f * ImGuiHelpers.GlobalScale)))
+                        {
+                            if (fc.ID != null) Config.FCGroups[Plugin.PlayerKey][fc.ID] = group;
+                            markDirty();
+                        }
+                        
+                        ImGui.SetCursorPos(cursorPosition);
+                        ImGui.ColorButton($"##Color{group}", color, ImGuiColorEditFlags.NoTooltip);
+                        ImGui.SameLine();
+                        ImGui.Text(group);
+                    }
+                }
             }
 
             ImGui.SameLine();
